@@ -1,0 +1,111 @@
+This is the list of things we specify for each training run, with different evaluation/diagnostic metrics, learning rate, optimizer, model, 
+And even doing sweeps or other statistical tests on these models. 
+
+
+General config structure. YAML file. 
+List of things I Need
+run_name
+seed
+model:
+    type: - list all possible models and deal with in setup.py. 
+    hyperparameters/structure things. 
+    Needs to take in loss function as input. 
+loss
+    type
+    hyperparams - specify. 
+optimizer:
+    type: whichever one to choose
+    parameters. 
+    weight_decay
+training:
+    epochs
+    lr
+    batch size here? 
+    save_checkpoints
+data:
+    name 
+    normalize
+    dataset - i don't like this one, it should just be the path. 
+    path - i think in the way it's written, this is where the data WILL be saved - we also want to be able to load where it IS saved. 
+    shuffle - i don't need this do I? 
+
+scheduler:
+    enabled: 
+    type
+    step_size
+    gamma
+    log
+#TODO: Finish this list, make it official. 
+
+
+schedules:
+    make a subconfig for each type of hyperparameter, then specify the type of schedule. 
+
+
+
+# ---------- Metadata ----------
+project_name: autoencoder
+run_name: vae_latent16_lr1e3_seed1
+seed: 1
+
+# ---------- Model ----------
+model:
+  type: Autoencoder, ConvAutoencoder, VAE, Diffusion etc. Need to add a model file for each, and be able to implement this in setup.py. 
+  variant: beta - optional
+  input_dim: 784 - should have this, but also allow scalars. 
+  latent_dim: 16
+  hidden_dim: 128
+  activation: relu
+
+# ---------- Training ----------
+training:
+  epochs: 100 - what about schedule? Where is that specified? 
+  lr: 0.001
+  batch_size: 64
+  weight_decay: 0.0
+  grad_clip: 1.0
+  log_interval: 1             # log loss every N epochs
+  diagnostic_interval: 10     # run diagnostics every N epochs
+  save_checkpoints: true
+
+# ---------- Loss Weights ----------
+losses:
+  reconstruction_weight: 1.0
+  kl_weight: 0.1
+  jacobian_penalty: 0.0       # optionally used during training
+
+# ---------- Optimizer / Scheduler ----------
+optimizer:
+  type: Adam
+  parameters: 
+scheduler:
+  enabled: false
+  step_size: 20
+  gamma: 0.5
+
+# ---------- Data ----------
+data:
+  task: reconstruction
+  dataset: MNIST
+  path: data/
+  batch_size: 64
+  val_split: 0.1
+  shuffle: true
+  num_workers: 4
+  normalize: true
+  augment: false
+
+# ---------- Diagnostics ----------
+diagnostics:
+  latent_pca: true
+  jacobian_norm: true
+  sharpness: false
+  weight_pca: true
+  log_images: true
+
+# ---------- Logging ----------
+logging:
+  use_wandb: true
+  offline_mode: false
+  save_artifacts: true
+  verbose: true

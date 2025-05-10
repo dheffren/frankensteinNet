@@ -1,0 +1,1 @@
+#TODO: Add loss functions and regularization terms. Implement in config. 

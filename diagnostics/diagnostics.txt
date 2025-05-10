@@ -1,0 +1,4 @@
+Need each diagnostic to have the same "method" structure. 
+
+Store their values in a diagnostic registry. 
+Then enter the diagnostic settings in the config. 

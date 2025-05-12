@@ -1,7 +1,7 @@
 from logger import Logger
 import torch
 import contextlib
-from  diagnostics.registry import DIAGNOSTIC_REGISTRY
+from  diagnostics.registry import get_diagnostics
 import time
 class Trainer:
     """
@@ -32,8 +32,8 @@ class Trainer:
             # log things we care about. 
             #TODO: Maybe make a separate one for each of validation and train loss. 
             if epoch % self.config["training"]["log_interval"] ==0:
-                self.logger.log_scalar("train_loss", train_loss, epoch)
-                self.logger.log_scalar("val_loss", val_loss, epoch)
+                self.logger.log_scalar("train/loss", train_loss, epoch)
+                self.logger.log_scalar("val/loss", val_loss, epoch)
             #log the current learning rate: OPTIONAL. 
             if self.config["scheduler"]["log"]:
                 self.logger.log_scalar("lr", self.optimizer.param_groups[0]["lr"], epoch)
@@ -43,7 +43,9 @@ class Trainer:
                 if self.config["training"]["save_checkpoints"]:
                     self.logger.save_checkpoint(self.model, epoch)
                 # log model state or latent space here. 
-                self.run_diagnostics(epoch) #with grad
+                self.run_diagnostics(epoch) #with grad"
+            #logging per epoch - done manually here. 
+            self.logger.flush(epoch)
     def train_epoch(self, epoch):
         self.model.train()
         total_loss = 0
@@ -55,7 +57,6 @@ class Trainer:
             #TODO: Add scheduler (custom hyperparameter schedulers) here and add to the config. 
             loss = loss_dict["loss"]
             loss.backward()
-            print
             self.optimizer.step()
             #why item? 
             total_loss+=loss.item()
@@ -90,11 +91,14 @@ class Trainer:
     def run_diagnostics(self, epoch):
         #runs the diagnostic functions in the diagnostic registry, allows us to not have to specify them here. 
         #specified in config file. 
-
+        diagnostics_to_run = self.config.get("diagnostics", [])
+        registry = get_diagnostics()
         #in the diagnostic function, log via log_scalar. 
-        for name, fn in DIAGNOSTIC_REGISTRY.items():
+        for name in diagnostics_to_run:
             print("name: ", name)
-            if not self.config["diagnostics"].get(name, False):
+            fn = registry.get(name)
+            if fn is None:
+                print(f"[Diagnostics] Warning: diagnostic '{name}' not found in registry.")
                 continue
 
             try:

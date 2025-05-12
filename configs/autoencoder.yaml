@@ -14,8 +14,8 @@ model:
 
 # ---------- Training ----------
 training:
-  epochs: 100
-  lr: 0.001
+  epochs: 20
+  lr: 0.1
   batch_size: 64
   weight_decay: 0.0
   grad_clip: 1.0
@@ -25,7 +25,8 @@ training:
 
 # ---------- Loss Weights ----------
 loss:
-  type: L2
+  type: ae
+  recon_type: mse
   reconstruction_weight: 1.0
   kl_weight: 0.1
   jacobian_penalty: 0.0       # optionally used during training
@@ -54,13 +55,14 @@ data:
 
 # ---------- Diagnostics ----------
 diagnostics:
-  reconstruction_plot: true
-  latent_pca: true
-  jacobian_norm: true
-  sharpness: false
-  weight_pca: true
-  log_images: true
-
+#NOTE THESE MUST BE THE METHOD NAMES NOT THE FILE NAMES. 
+  - tensor_stats_diag
+  #- latent_variance_diag
+  - log_reconstruction_plot
+  #- jacobian_norm
+diagnostics_config:
+  tensor_stats_diag_keys: ["latent", "recon"]
+  tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]
 # ---------- Logging ----------
 logging:
   use_wandb: true

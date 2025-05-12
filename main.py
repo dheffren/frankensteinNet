@@ -5,6 +5,7 @@
 import yaml
 from utils.setup import build_model, build_optimizer, build_scheduler, build_dataloaders
 from train import Trainer
+from runManager import RunManager
 from logger import Logger
 from pathlib import Path
 
@@ -31,6 +32,7 @@ def parse_args():
     parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--run_name", type=str, default=None)
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--resume", type=bool, default = False)
     #TODO: add other command line argument parameters here! 
     return parser.parse_args()
 
@@ -62,7 +64,9 @@ model = build_model(config).to(device)
 optimizer = build_optimizer(model, config)
 scheduler = build_scheduler(optimizer, config)
 train_loader, val_loader = build_dataloaders(config)
-logger = Logger(config)
+runManager = RunManager(config, "runs", args.resume)
+#don't love this reference here. 
+logger = Logger(runManager.run_dir, config)
 
 # Train
 trainer = Trainer(model, optimizer, scheduler, (train_loader, val_loader), logger, config)

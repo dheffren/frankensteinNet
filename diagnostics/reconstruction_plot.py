@@ -2,11 +2,16 @@ from visualization import make_reconstruction_plot
 import torch
 
 # fn(self.model, self.val_loader, self.logger, epoch, self.config)
+from .registry import register_diagnostic
+
+@register_diagnostic()
 def log_reconstruction_plot(model, dataloader, logger, epoch, config):
     #reconstruction plot diagnostic. 
     model.eval()
     #maybe see if this should ahve a default or not? 
-    num_images = config["diagnostics"].get("num_recon_samples", 8)
+    #fixed this so it works with the new registry system. 
+    diag_cfg = config.get("diagnostics_config", {})
+    num_images = diag_cfg.get("num_recon_samples", 8)
     # Grab a batch of data
     #Note: Designed so this is agnostic to the type of data passed in. 
     #always takes first batch of validation (and same samples)

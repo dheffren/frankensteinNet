@@ -1,8 +1,7 @@
 import torch
 from .suffix_fn_registry import get_suffix_fn, is_pairwise_suffix
 from .registry import register_diagnostic
-#@register_diagnostic(fields = lambda cfg: [f"diag/{cfg['diagnostics_config'].get('tensor_stats_key', 'z')}/mean",
-    #f"diag/{cfg['diagnostics_config'].get('tensor_stats_key', 'z')}/std",f"diag/{cfg['diagnostics_config'].get('tensor_stats_key', 'z')}/min", f"diag/{cfg['diagnostics_config'].get('tensor_stats_key', 'z')}/max"])
+
 #TODO: More gneeral? 
 suffix_fns = {
     "mean": lambda t: t.mean().item(),
@@ -24,11 +23,6 @@ def tensor_stats_diag(model, val_loader, logger, epoch, cfg):
     
     if isinstance(keys, str):
         keys = [keys]
-
- 
-
-    #stats = []
-
     model.eval()
     data_by_key = {k: [] for k in keys}
     with torch.no_grad():
@@ -39,7 +33,7 @@ def tensor_stats_diag(model, val_loader, logger, epoch, cfg):
             for k in keys:
                 if k in out:
                     data_by_key[k].append(out[k].detach().cpu())
-
+    outputDict = {}
     for k, tensors in data_by_key.items():
        if not tensors:# what is this for again? 
            continue
@@ -51,4 +45,5 @@ def tensor_stats_diag(model, val_loader, logger, epoch, cfg):
                 val = fn(t,t)
             else:
                 val = fn(t)
-            logger.log_scalar(f"diag/{k}/{suffix}", val, epoch)
+            outputDict[f"{k}/{suffix}"] = val
+    return outputDict

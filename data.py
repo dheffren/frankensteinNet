@@ -6,23 +6,9 @@ Note: Write a custom method for each potential "type" of dataset i have.
 Then call this from the utils with the data path specified. 
 TODO: Get this method to work with loaded data, make sure it works period. See where this is called in setup. 
 """
-def get_dataloaders(config):
-    
+def get_dataloaders(config, train = True):
     cfg = config["data"]
-    
-    transform_list = [transforms.ToTensor()]
-    if cfg.get("normalize", False):
-        transform_list.append(transforms.Normalize((0.5,), (0.5,)))
-
-    transform = transforms.Compose(transform_list)
-
-    if cfg["dataset"] == "MNIST":
-        full_dataset = datasets.MNIST(root=cfg["path"], train=True, download=True, transform=transform)
-    elif cfg["dataset"] == "CIFAR10":
-        full_dataset = datasets.CIFAR10(root=cfg["path"], train=True, download=True, transform=transform)
-    else:
-        raise ValueError(f"Unsupported dataset: {cfg['dataset']}")
-
+    full_dataset = get_dataset(config, train)
     val_len = int(cfg["val_split"] * len(full_dataset))
     train_len = len(full_dataset) - val_len
     train_set, val_set = random_split(full_dataset, [train_len, val_len])
@@ -31,3 +17,32 @@ def get_dataloaders(config):
     val_loader = DataLoader(val_set, batch_size=cfg["batch_size"], shuffle=False, num_workers=cfg["num_workers"])
 
     return train_loader, val_loader
+def get_dataset(config, train = True):
+    dataset_name = config["data"]["dataset"]
+    path = config["data"]["path"]
+    transform = get_transforms(config, train = train)
+    from datasets.data_registry import get_registered_dataset
+    DatasetClass = get_registered_dataset(dataset_name)
+    #should I specify a path to download FROM vs root? 
+    return DatasetClass(root = path, train = train, transform = transform)
+    """
+    if dataset_name == "MNIST":
+        full_dataset = datasets.MNIST(root=path, train=train, download=True, transform=transform)
+    elif dataset_name  == "CIFAR10":
+        full_dataset = datasets.CIFAR10(root=path, train=train, download=True, transform=transform)
+    elif dataset_name == "customDataset":
+    
+    else:
+        raise ValueError(f"Unsupported dataset: {dataset_name}")
+    return full_dataset
+    """
+def get_transforms(config, train = True):
+    tfm_cfg = config.get("transform_config", {})
+    if train:
+        return transforms.Compose([
+            transforms.Resize(tfm_cfg.get("resize", 28)),
+            transforms.ToTensor(),
+            transforms.Normalize(*tfm_cfg.get("normalize", [0.5, 0.5]))
+        ])
+    else:
+        return

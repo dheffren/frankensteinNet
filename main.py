@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.9"
-# dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML"]
+# dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas"]
 # ///
 import yaml
 from utils.setup import build_model, build_optimizer, build_scheduler, build_dataloaders
@@ -8,7 +8,7 @@ from train import Trainer
 from runManager import RunManager
 from logger import Logger
 from pathlib import Path
-
+from analyze import plot_all_metrics, plot_learning_rate, plot_loss_curves
 import argparse
 import random
 import numpy as np
@@ -34,6 +34,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--resume", type=bool, default = False)
     #TODO: add other command line argument parameters here! 
+    parser.add_argument("--epochs", type=int, default = None)
     return parser.parse_args()
 
 args = parse_args()
@@ -51,8 +52,11 @@ if args.run_name is not None:
 #if don't specify a name
 elif "run_name" not in config or config["run_name"] is None:
     config["run_name"]= "temp"
+    
 #do other arg parameters here: 
 #TODO: Check other params here. 
+if args.epochs is not None:
+    config["training"]["epochs"] = args.epochs
 
 #Sets the seed for everything to follow. 
 set_seed(config["seed"])
@@ -71,3 +75,7 @@ logger = Logger(runManager.run_dir, config)
 # Train
 trainer = Trainer(model, optimizer, scheduler, (train_loader, val_loader), logger, config)
 trainer.train()
+
+# Plot figures and get summary stats. 
+# TODO: Save in plots instead? 
+plot_all_metrics(runManager.run_dir)

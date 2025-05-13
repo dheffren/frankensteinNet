@@ -57,14 +57,15 @@ data:
 diagnostics:
 #NOTE THESE MUST BE THE METHOD NAMES NOT THE FILE NAMES. 
   - tensor_stats_diag
-  #- latent_variance_diag
+  - layer_pca
   - log_reconstruction_plot
   - jacobian_norm_diag
 diagnostics_config:
   tensor_stats_diag_keys: ["latent", "recon"]
   tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]
-  jacobian_norm_diag_keys: ["encoder", "decoder"]
+  jacobian_norm_diag_keys: ["latent", "recon"]
   jacobian_norm_diag_suffixes: ["spectral", "jacfro"]
+  layer_pca_keys: ["latent"]
 # ---------- Logging ----------
 logging:
   use_wandb: true

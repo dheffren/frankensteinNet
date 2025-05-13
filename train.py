@@ -46,6 +46,7 @@ class Trainer:
                 self.run_diagnostics(epoch) #with grad"
             #logging per epoch - done manually here. 
             self.logger.flush(epoch)
+        
     def train_epoch(self, epoch):
         self.model.train()
         total_loss = 0
@@ -104,8 +105,11 @@ class Trainer:
             try:
                 print(f"[Diagnostics] {name}")
                 t0 = time.time()
-                #TODO: Setup diagnostic functions. 
-                fn(self.model, self.val_loader, self.logger, epoch, self.config)
+                
+                outputs = fn(self.model, self.val_loader, self.logger, epoch, self.config) or {}
+                #log diagnostic scalars here instead. 
+                for field, value in outputs.items():
+                    self.logger.log_scalar(f"{name}/{field}", value, epoch)
                 print(f"[Diagnostics] {name} finished in {time.time() - t0:.2f}s")
             except Exception as e:
                 print(f"[Diagnostics] {name} failed: {e}")

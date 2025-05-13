@@ -33,8 +33,8 @@ class Autoencoder(nn.Module):
         #TODO: Add shape diagnostic. Not sure how lol. 
         x = x.view(x.shape[0], -1)
         latent = self.encoder(x)
+
         reconstruction = self.decoder(latent)
-       
         #generalize this to deeper things. 
         #need to generalize this better
         reconstruction = reconstruction.view(x.shape[0], 1, 28, 28)

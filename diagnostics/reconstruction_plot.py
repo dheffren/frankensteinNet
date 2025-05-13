@@ -53,3 +53,4 @@ def get_reconstruction_output(model, x):
 
     else:
         raise TypeError(f"Unrecognized model output type: {type(out)}")
+    return 

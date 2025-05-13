@@ -21,6 +21,7 @@ class RunManager:
             self._save_config(config)
             #TODO: Add way to save metadata at the end of training. 
             self._save_metadata()
+            
     @classmethod
     def utility_mode(cls, base_dir = "runs"):
         return cls(config = None, base_dir = base_dir, utility = True)   
@@ -37,7 +38,6 @@ class RunManager:
         else:
             run_dir, run_name = get_run_dir(self.base_dir, name, naming)
             return run_dir, run_name
-
 
     def _save_config(self, config):
         """
@@ -86,7 +86,23 @@ class RunManager:
             return bool(out)
         except Exception:
             return False
-
+    def list_runsL(self, experiment=None):
+        if experiment:
+            exp_dir = self.base_dir/ experiment
+            if not exp_dir.exists():
+                print(f"No experiment named '{experiment}' found.")
+                return
+            print(f"[{experiment}]")
+            for sub in sorted(exp_dir.glob(f"{experiment}*")):
+                if sub.is_dir():
+                    print("  -", sub.name)
+        else:
+            for exp_folder in sorted(self.base_dir.glob("*")):
+                if exp_folder.is_dir():
+                    print(f"[{exp_folder.name}]")
+                    for sub in sorted(exp_folder.glob(f"{exp_folder.name}*")):
+                        print("  -", sub.name)
+    
     def list_runs(self, base_name_filter=None):
         print("Available runs:\n")
 
@@ -114,20 +130,17 @@ class RunManager:
 
                 lock_str = "🔒" if locked else ""
                 print(f"[{run_dir.name}] {lock_str} status: {status}, started: {start_time}")
-            
+        return 
 
-    def delete_run(self, run_name, confirm=False):
+    def delete_run(self, run_name):
         #TODO: Add the keep or lock mechanism. 
         run_dir = self.base_dir / run_name
         if not run_dir.exists():
             print(f"Run {run_name} does not exist.")
             return
         #need to deal with this. 
-        if (run_dir / ".keep").exists() or self._is_locked(run_dir):
+        if (run_dir / ".keep").exists():
             print(f"Run {run_name} is locked. Skipping deletion.")
-            return
-        if not confirm:
-            print(f"Use confirm=True to actually delete {run_name}")
             return
         shutil.rmtree(run_dir)
         print(f"Deleted run {run_name}")

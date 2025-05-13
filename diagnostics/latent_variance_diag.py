@@ -1,6 +1,6 @@
 import torch
 from .registry import register_diagnostic
-@register_diagnostic(fields = None)
+@register_diagnostic()
 def latent_variance_diag(model, val_loader, logger, epoch, cfg):
     model.eval()
     zs = []

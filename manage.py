@@ -6,9 +6,11 @@ import argparse
 from runManager import RunManager
 
 def main():
+    #TODO - use additional/better list methods, clean up, and merge args.delete and delete_folder. 
     parser = argparse.ArgumentParser(description="Run Manager CLI")
-    parser.add_argument("--delete", type=str, help="Name of run folder to delete")
-    parser.add_argument("--list", action="store_true", help="List existing run folders")
+    parser.add_argument("--delete", type=str, help="Delete a specific sub-run")
+    parser.add_argument("--list", nargs = "?", const = True, help="List existing run folders")
+    parser.add_argument("--delete-folder", type = str, help = "Delete an entire experiment folder")
     parser.add_argument("--runs-dir", type=str, default="runs", help="Parent runs directory")
 
     args = parser.parse_args()
@@ -16,15 +18,19 @@ def main():
 
     if args.list:
         print("[RunManager] Available runs:")
-        for run in rm.list_runs():
-            print(" -", run)
+        rm.list_runsL()
         return
 
     if args.delete:
-        run_path = rm.get_run_path(args.delete)
+        run_path = rm.base_dir / args.delete
         confirm = input(f"Are you sure you want to delete '{run_path}'? (y/n): ")
         if confirm.lower().startswith("y"):
-            rm.delete_run(run_path)
+            rm.delete_run(args.delete)
+    elif args.delete_folder:
+        folder_path = rm.base_dir/ args.delete_folder
+        confirm = input(f"Are you sure you want to delete the entire experiment folder '{folder_path}'? (y/n): ")
+        if confirm.lower().startswith("y"):
+            rm.delete_run(args.delete_folder)
 
 if __name__ == "__main__":
     main()

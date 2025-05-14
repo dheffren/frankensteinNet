@@ -11,6 +11,7 @@ Each `make_*_loss` factory returns a callable that expects two arguments:
     batch       – whatever the dataloader yields (tensor / (x,y) / dict).
 It returns a dictionary **must** contain a key "total" (torch scalar) and
 may additionally include any diagnostic scalars you wish to log.
+TODO: worried about "names" of the things in the loss declarations. Need to be consistent. 
 """
 from __future__ import annotations
 
@@ -61,9 +62,8 @@ def make_vae_loss(kl_weight: float = 1.0,
 
     recon_fn = mse_loss if recon_type == "mse" else bce_loss
 
-    def _loss_fn(batch, forward_fn: Callable, ) -> Dict[str, torch.Tensor]:
-        x = batch if isinstance(batch, torch.Tensor) else batch[0]
-        out = forward_fn(x)
+    def _loss_fn(out, targets) -> Dict[str, torch.Tensor]:
+        x = targets["x"]
         recon = out["recon"]
         mu, logvar = out["mu"], out["logvar"]
 
@@ -81,13 +81,11 @@ def make_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], 
         warnings.warn(f"[make_ae_loss] Unused keys in loss config: {list(extra.keys())}")
     recon_fn = mse_loss if recon_type == "mse" else bce_loss
 
-    def _loss_fn( batch, forward_fn: Callable,):
-        #checks if tuple or not. 
-        x = batch if isinstance(batch, torch.Tensor) else batch[0]
-        outputDict = forward_fn(x)
-        recon = outputDict["recon"]
-        latent = outputDict["latent"]
-        total = recon_fn(x, recon)
+    def _loss_fn(out, targets):
+        x = targets["x"]
+        recon = out["recon"]
+        latent = out["latent"]
+        total = recon_fn(x.to(recon.device), recon)
         #ADD EXTRA THINGS REGARDING LATENT HERE. 
 
         #make sure these names are consistent. 
@@ -95,22 +93,12 @@ def make_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], 
 
     return _loss_fn
 
-def backup_loss( batch, forward):
-        #TODO: Fix this structure. 
-        x, y = batch
-        reconstruction, latent = forward(x)
-      
-        l2loss = torch.mean(torch.sum((reconstruction - x)**2, axis=(-1, -2)))
-        loss_dict = {"loss": l2loss}
-        return loss_dict
-
 def make_contrastive_loss(temperature: float = 0.07, **extra):
     if extra:
         warnings.warn(f"[make_contrastive_loss] Unused keys in loss config: {list(extra.keys())}")
 
-    def _loss_fn( batch, forward_fn: Callable, ):
-        # Expect forward_fn to return L2‑normalised embeddings of shape [B, D]
-        z = forward_fn(batch)
+    def _loss_fn(out, aux):
+        z = out["z"]
         sim = torch.mm(z, z.t()) / temperature  # [B,B]
         labels = torch.arange(z.size(0), device=z.device)
         loss = F.cross_entropy(sim, labels)

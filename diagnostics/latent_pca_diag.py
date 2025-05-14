@@ -50,16 +50,14 @@ def layer_pca(model, val_loader, logger, epoch, cfg):
             for i, batch in enumerate(val_loader):
                 if i >= max_batches:
                     break
-                x = batch[0].to(cfg["device"])
-                y = batch[1] if len(batch)>1 else None
-                
-                out = model(x)
+                inputs, targets = model.prepare_input(batch)
+                out = model(**inputs)
                 if key not in out:
                     continue
                 z = out[key].detach().cpu()
                 latents.append(z)
-                if y is not None:
-                    labels.append(y.detach().cpu())
+                if targets["y"] is not None:
+                    labels.append(targets["y"].detach().cpu())
 
         if not latents:
             return

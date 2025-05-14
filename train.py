@@ -19,14 +19,13 @@ class Trainer:
         self.scheduler = scheduler
         self.global_step = 0
         self.config = config
-        self.device = config["device"]
         return 
     def train(self):
         for epoch in range(self.config["training"]["epochs"]):
             train_loss = self.train_epoch(epoch)
 
-            val_loss = self.evaluate()
-            print(f"Epoch {epoch}: Train loss{train_loss}, Val{val_loss}")
+            val_loss = self.evaluate(epoch)
+            print(f"Epoch {epoch}: Train {train_loss}, Val {val_loss}")
             #update scheduler - if no scheduler, should still work as a constant. 
             self.scheduler.step() #-- if want to update lr in the middle of epoch, will have to do in train epoch. 
             # log things we care about. 
@@ -38,7 +37,6 @@ class Trainer:
             if self.config["scheduler"]["log"]:
                 self.logger.log_scalar("lr", self.optimizer.param_groups[0]["lr"], epoch)
             #save checkpoints here. And log anything else we want. 
-            #TODO: Add some method "of checking" whether to save checkpoints or not. Maybe add parameter to the config. 
             if epoch % self.config["training"]["diagnostic_interval"] == 0:
                 if self.config["training"]["save_checkpoints"]:
                     self.logger.save_checkpoint(self.model, epoch)
@@ -51,11 +49,9 @@ class Trainer:
         self.model.train()
         total_loss = 0
         for batch in self.train_loader:
-            batch = self._to_device(batch)
             self.optimizer.zero_grad()
             #should only contain primary loss and any loss components or fast metrics. 
-            loss_dict = self.model.compute_loss(batch)
-            #TODO: Add scheduler (custom hyperparameter schedulers) here and add to the config. 
+            loss_dict = self.model.compute_loss(batch, epoch)
             loss = loss_dict["loss"]
             loss.backward()
             self.optimizer.step()
@@ -70,7 +66,7 @@ class Trainer:
             self.global_step += 1
         avg_loss = total_loss / len(self.train_loader)
         return avg_loss
-    def evaluate(self, use_gradients = False):
+    def evaluate(self, epoch, use_gradients = False):
         #maybe only include jacobian terms in training not validation. 
         total_loss = 0
         self.model.eval()
@@ -82,8 +78,7 @@ class Trainer:
 
         with context:
             for batch in self.val_loader: 
-                batch = self._to_device(batch)
-                loss_dict = self.model.compute_loss(batch)
+                loss_dict = self.model.compute_loss(batch, epoch)
                 total_loss +=loss_dict["loss"].item()
                 #don't do per batch evaluation. 
         avg_loss = total_loss / len(self.val_loader)
@@ -96,7 +91,6 @@ class Trainer:
         registry = get_diagnostics()
         #in the diagnostic function, log via log_scalar. 
         for name in diagnostics_to_run:
-            print("name: ", name)
             fn = registry.get(name)
             if fn is None:
                 print(f"[Diagnostics] Warning: diagnostic '{name}' not found in registry.")
@@ -114,10 +108,4 @@ class Trainer:
             except Exception as e:
                 print(f"[Diagnostics] {name} failed: {e}")
 
-    def _to_device(self, batch):
-        if isinstance(batch, (list, tuple)):
-            return [x.to(self.device) for x in batch]
-        elif isinstance(batch, dict):
-            return {k: v.to(self.device) for k, v in batch.items()}
-        else:
-            return batch.to(self.device)
+   

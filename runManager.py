@@ -14,7 +14,20 @@ class RunManager:
             self.config = config
             self.resume = resume
             #could rewrite this to be more class based, but prefer the functional way. 
-            self.run_dir, self.run_name = self._get_run_dir(naming = config.get("run_naming", "index"))
+            if "_sweep" in config:
+                root = Path(base_dir) / "sweeps"
+
+                s = config["_sweep"]
+                stamp = s["stamp"]
+                variant = f"i{s['idx']}"
+                if s.get("seed") is not None:
+                    variant += f"_s{s['seed']}"
+                if s.get("boot") is not None:
+                    variant += f"_b{s['boot']}"
+                self.run_dir, self.run_name = self._get_sweep_dir(root, stamp, sweep_name = variant)
+            else:
+                root = Path(base_dir) / "manualRuns"
+                self.run_dir, self.run_name = self._get_run_dir(root, naming = config.get("run_naming", "index"))
             #Need to add this here now. 
             config["run_name"] = self.run_name
             #not sure if pass the config or use self.config. Never sure. 
@@ -25,18 +38,28 @@ class RunManager:
     @classmethod
     def utility_mode(cls, base_dir = "runs"):
         return cls(config = None, base_dir = base_dir, utility = True)   
-    
-    def _get_run_dir(self, naming):
+    def _get_sweep_dir(self, base_dir, stamp, sweep_name):
+        name = self.config["run_name"]
+        base = Path(base_dir)/name #right now this is runs + name we chose. 
+        base.mkdir(parents=True, exist_ok=True) #make the folder. 
+        run_path = base / stamp
+        run_path.mkdir(parents = True, exist_ok = True)
+        run_dir = run_path / sweep_name 
+        run_dir.mkdir(parents = True, exist_ok = False)
+        #NOTE: We make run_name NOT the same as the last term of run_path. 
+        run_name = name + stamp + sweep_name 
+        return run_dir, run_name
+    def _get_run_dir(self, base_dir, naming, sweep_name = None):
         #TODO: Make sure resuming works, checks for the right thing. Don't know if need to add to config file. 
         name = self.config["run_name"]
         if self.resume: 
             #note: HEre the run_name SHOULD include the suffix. 
-            run_dir = self.base_dir / name
+            run_dir = base_dir / name
             if not run_dir.exists():
                 raise FileNotFoundError(f"No run found at {run_dir}")
             return run_dir, name
         else:
-            run_dir, run_name = get_run_dir(self.base_dir, name, naming)
+            run_dir, run_name = get_run_dir(base_dir, name, naming, sweep_name)
             return run_dir, run_name
 
     def _save_config(self, config):
@@ -146,10 +169,12 @@ class RunManager:
         print(f"Deleted run {run_name}")
 
     #allows for not needing to manually rename everything. 
-def get_run_dir( base_dir, base_name, naming = "index"):
+def get_run_dir( base_dir, base_name, naming = "index", sweep_name = None):
     """
     TODO: Fix sweeping for the index run naming scheme. 
+    If sweep: one base name per sweep specification. 
     """
+    
     base = Path(base_dir)/base_name #right now this is runs + name we chose. 
     base.mkdir(parents=True, exist_ok=True) #make the folder. 
 
@@ -168,7 +193,9 @@ def get_run_dir( base_dir, base_name, naming = "index"):
         run_name = f"{base_name}_{uuid.uuid4().hex[:8]}"
     else: 
         raise ValueError(f"Unknown naming scheme: {naming}")
+   
     run_path = base / run_name
     #make the run directory in the larger folder of that family of runs. 
     run_path.mkdir(parents = True, exist_ok = False)
+
     return run_path, run_name

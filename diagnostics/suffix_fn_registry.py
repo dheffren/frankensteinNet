@@ -7,14 +7,9 @@ def compute_mse(x, y):
 
 def compute_mae(x, y):
     return F.l1_loss(x, y).item()
-#TODO: Fix the model output - it wants me to put in the encoder or decoder, but the problem with that is it doesn't make sense with what i'm doing. 
-def compute_jacobian_fro_norm(model, x, key = "latent"):
-    #problem was that this was under nograd.
-    x = x.requires_grad_(True)
-    y = model(x)
-    print(y[key].grad_fn)
-    if isinstance(y, dict): y = y[key]  # or whatever latent
+def compute_jacobian_fro_norm(x, y):
     J = []
+    #problem was that this was under nograd.
     for i in range(y.shape[1]):
         #element 0 of tensors does not require grad and does not have a grad_fn
         grad = torch.autograd.grad(y[:, i].sum(), x, retain_graph=True, create_graph=False)[0]
@@ -23,7 +18,7 @@ def compute_jacobian_fro_norm(model, x, key = "latent"):
     norms = torch.norm(J, dim=(1, 2), p='fro')  # (B,)
     return norms.mean().item()
 
-def compute_jacobian_spectral_norm(model, x, key = "latent", num_iters = 5, eps=1e-8):
+def compute_jacobian_spectral_norm(x, y, num_iters = 5, eps=1e-8):
     """
     Estimates the spectral norm (largest singular value) of the Jacobian dy/dx
     using power iteration, without modifying .grad buffers.
@@ -46,12 +41,6 @@ def compute_jacobian_spectral_norm(model, x, key = "latent", num_iters = 5, eps=
 
     Could do SVD if the latent dim was small. 
     """
-    x = x.detach().requires_grad_(True)
-
-    # Forward pass to get output
-    y = model(x)
-    if isinstance(y, dict):
-        y = y[key]
     #flatten to either recon size or latent size. 
     y = y.view(x.size(0), -1)  # shape (B, D_out)
     B, D_out = y.shape

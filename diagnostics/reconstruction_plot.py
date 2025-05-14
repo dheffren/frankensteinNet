@@ -15,13 +15,13 @@ def log_reconstruction_plot(model, dataloader, logger, epoch, config):
     # Grab a batch of data
     #Note: Designed so this is agnostic to the type of data passed in. 
     #always takes first batch of validation (and same samples)
-    x_batch_raw = next(iter(dataloader))
-    x_batch = unpack_batch(x_batch_raw)[:num_images].to(config["device"])
     with torch.no_grad():
-        x_recon = get_reconstruction_output(model, x_batch)
+        batch = next(iter(dataloader))
+        inputs, target = model.prepare_input(batch)
+        out = model(**inputs)
 
-    x_batch = x_batch.cpu()
-    x_recon = x_recon.cpu()
+    x_batch = target["x"]
+    x_recon = out["recon"].cpu()
     fig = make_reconstruction_plot(x_batch, x_recon, epoch, num_images)
     logger.save_plot(fig, f"recon_epoch_{epoch}.png")
 

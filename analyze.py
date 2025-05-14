@@ -44,13 +44,11 @@ def plot_learning_rate(metrics_path, save_dir=None, show=False):
     """
     metrics = pd.read_csv(metrics_path)
     steps = metrics["step"]
-    print("steps: ", steps)
-    print(metrics.columns)
     if "lr" not in metrics.columns:
         return
     print("here")
     plt.figure()
-    print(metrics["lr"])
+  
     plt.plot(steps, metrics["lr"], label="Learning Rate", color="green")
     plt.xlabel("Step")
     plt.ylabel("Learning Rate")

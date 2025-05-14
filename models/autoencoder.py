@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
-from losses import make_loss_fn
+
 #TODO: Finish implementing at least one model. 
 class Autoencoder(nn.Module):
-    def __init__(self, model_cfg, loss_cfg):
+    def __init__(self, model_cfg, loss_fn, hyp_sched,  device = "cpu"):
         super().__init__()
         
         #maybe should make this part modular somehow? So it doesn't have to be model specific? 
@@ -26,8 +26,9 @@ class Autoencoder(nn.Module):
             #use sigmoid? 
             #nn.Sigmoid()
         )
-        self.loss_fn = make_loss_fn(loss_cfg)
-
+        self.loss_fn = loss_fn
+        self.hyp_sched = hyp_sched
+        self.device = device
     
     def forward(self, x):
         #TODO: Add shape diagnostic. Not sure how lol. 
@@ -40,8 +41,40 @@ class Autoencoder(nn.Module):
         reconstruction = reconstruction.view(x.shape[0], 1, 28, 28)
  
         return {"recon":reconstruction, "latent":latent}
-    def compute_loss(self, batch):
+    def compute_loss(self, batch, epoch):
         #pass in forward method to support multiple tasks/losses. 
         #maybe instead of this do something else. 
-        return self.loss_fn(batch, self.forward)
-    
+        inputs, targets = self.prepare_input(batch)
+        out = self(**inputs)
+        #UPDATE THE SCHEDULED HYPERPARAMETERS HERE AND PASS INTO LOSS FUNCTION. Use epoch. 
+        return self.loss_fn(out, targets)
+    def prepare_input(self, batch):
+        if isinstance(batch, torch.Tensor):
+            #shouldn't we return x as an aux as well. 
+            x = batch
+            inputs  = {"x": x.to(self.device)}
+            targets = {"x": x}                      
+            return inputs, targets
+        elif isinstance(batch, (list, tuple)):
+            if len(batch) == 1:
+                x = batch[0]
+                inputs  = {"x": x.to(self.device)}
+                targets = {"x": x}
+            elif len(batch) >= 2:
+                #don't do anything with the rest - don't know what to do lol. 
+                x, y = batch[:2]
+                inputs  = {"x": x.to(self.device)}
+                targets = {"x": x, "y": y}          # recon + label
+            return inputs, targets
+        elif isinstance(batch, dict):
+            #TODO: Check this. 
+            x = batch["x"]
+            inputs  = {k: (v.to(self.device) if torch.is_tensor(v) else v)
+                       for k, v in batch.items()
+                       if k in {"x"} or k.startswith("cond_")}  # whatever you forward
+            targets = {k: v for k, v in batch.items()
+                       if k not in inputs}
+            targets.setdefault("x", x)               # recon target by default
+            return inputs, targets
+
+        raise TypeError("Unknown batch format for prepare_input")

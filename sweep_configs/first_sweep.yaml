@@ -1,0 +1,32 @@
+# sweep_configs/latent_lr.yaml
+# -------------------------------------------------------------
+# 1)  Point to ANY normal, hand‑written config that trains.
+#     (The sweeper will copy it, then override fields below.)
+base_config: configs/autoencoder.yaml
+
+# 2)  One human label for the whole sweep.
+#     This becomes the parent folder inside  runs/sweeps/<run_name>/<stamp>/
+run_name: extraGoodRun
+
+# 3)  Hyper‑parameter search space  (dot‑notation = nested key)
+method: grid          # grid | random
+sweep:
+  model.latent_dim:   [32, 64, 128]
+  optim.lr:           [1e-4, 5e-4]
+
+#   ––  If you want random search instead:
+# method: random
+# random:
+#   num_samples: 20
+# sweep:
+#   model.latent_dim: [16, 32, 64, 128, 256]
+#   optim.lr:         [1e-4, 3e-4, 1e-3]
+
+# 4)  Seed fan‑out (optional)
+seeds: [1, 2, 3]        # remove or leave empty for no seed fan‑out
+
+# 5)  Bootstrap fan‑out (optional, can omit block entirely)
+bootstrap:
+  enabled: false
+  num_bootstrap: 5
+  resample_seed_base: 1000

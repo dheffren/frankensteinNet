@@ -26,10 +26,11 @@ def tensor_stats_diag(model, val_loader, logger, epoch, cfg):
     model.eval()
     data_by_key = {k: [] for k in keys}
     with torch.no_grad():
-        for i, (x, *_) in enumerate(val_loader):
+        for i, batch in enumerate(val_loader):
             if i >= max_batches:
                 break
-            out = model(x.to(cfg["device"]))
+            inputs, target = model.prepare_input(batch)
+            out = model(**inputs)
             for k in keys:
                 if k in out:
                     data_by_key[k].append(out[k].detach().cpu())

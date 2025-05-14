@@ -1,18 +1,24 @@
 from models.autoencoder import Autoencoder
 from torch.optim import Adam
 from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
+from scheduler import ScalarSchedule, SchedBundle
 from data import get_dataloaders
-
+from losses import make_loss_fn
 import torch
 
 def build_model(config):
     #load the loss function from the config.loss function. 
     model_cfg = config["model"]
+
+    loss_fn = make_loss_fn(config["loss"])
+    hyp_scheduler = build_hyp_scheduler(config)
     #TODO: What to do if don't input these things. 
     if model_cfg["type"] == "Autoencoder":
         return Autoencoder(
             model_cfg = model_cfg,
-            loss_cfg = config["loss"]
+            loss_fn = loss_fn, 
+            hyp_sched = hyp_scheduler, 
+            device = config["device"]
         )
     #ADD other model types here. 
 
@@ -56,6 +62,9 @@ def build_scheduler(optimizer, config):
     # add more schedulers here. 
     else: 
         raise ValueError(f"Unsupported scheduler type: {sched_type}")
+def build_hyp_scheduler(config):
+    return SchedBundle(config.get("scheduler_hyp", {}))
+
 def build_dataloaders(config):
     #TODO: Fix get_dataloaders, pick what parameters I want passed into this. Fix the path vs dataset name problem. 
     data_cfg = config["data"]

@@ -3,7 +3,7 @@
 # dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas"]
 # ///
 import yaml
-from utils.setup import build_model, build_optimizer, build_scheduler, build_dataloaders
+from utils.setup import build_model, build_optimizer, build_scheduler, build_dataloaders, build_hyp_scheduler
 from train import Trainer
 from runManager import RunManager
 from logger import Logger
@@ -63,10 +63,12 @@ set_seed(config["seed"])
 # Build components
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 config["device"] = str(device)
+
 model = build_model(config).to(device)
 
 optimizer = build_optimizer(model, config)
 scheduler = build_scheduler(optimizer, config)
+
 train_loader, val_loader = build_dataloaders(config)
 runManager = RunManager(config, "runs", args.resume)
 #don't love this reference here. 

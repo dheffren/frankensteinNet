@@ -1,0 +1,77 @@
+_sweep:
+  id: first_sweep
+  idx: 0
+  seed: 1
+  stamp: '20250513_203852'
+data:
+  augment: false
+  batch_size: 64
+  dataset: MNIST
+  normalize: true
+  num_workers: 8
+  path: data/
+  shuffle: true
+  task: reconstruction
+  val_split: 0.1
+diagnostics:
+- tensor_stats_diag
+- layer_pca
+- log_reconstruction_plot
+- jacobian_norm_diag
+diagnostics_config:
+  jacobian_norm_diag_keys:
+  - latent
+  - recon
+  jacobian_norm_diag_suffixes:
+  - spectral
+  - jacfro
+  layer_pca_keys:
+  - latent
+  tensor_stats_diag_keys:
+  - latent
+  - recon
+  tensor_stats_diag_suffixes:
+  - mean
+  - std
+  - min
+  - max
+logging:
+  offline_mode: false
+  save_artifacts: true
+  use_wandb: true
+  verbose: true
+loss:
+  jacobian_penalty: 0.0
+  kl_weight: 0.1
+  recon_type: mse
+  reconstruction_weight: 1.0
+  type: ae
+model:
+  activation: relu
+  hidden_dim: 128
+  input_dim: 784
+  latent_dim: 32
+  type: Autoencoder
+  variant: beta
+optim:
+  lr: 1e-4
+optimizer:
+  parameters: null
+  type: Adam
+project_name: autoencoder
+run_name: vae_latent16_lr1e3_seed1
+scheduler:
+  enabled: true
+  gamma: 0.5
+  log: true
+  step_size: 20
+seed: 1
+training:
+  batch_size: 64
+  diagnostic_interval: 10
+  epochs: 20
+  grad_clip: 1.0
+  log_interval: 1
+  lr: 0.0001
+  save_checkpoints: true
+  weight_decay: 0.0

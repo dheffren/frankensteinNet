@@ -75,7 +75,34 @@ def make_vae_loss(kl_weight: float = 1.0,
 
     return _loss_fn
 
+def orthLoss(u, v, uh):
+    """
+    Call this for u1, c1 and u2, c2, wit
+    """
+    uh = uh.clone().detach().requires_grad_()
+    u = u.detach()
+    v = v.detach()
+    loss_orth = 0
+    for i in range(u.shape[1]):
+        for j in range(v.shape[1]):
 
+            u_1_grad = torch.autograd.grad(outputs=u[:, i], inputs=uh, 
+                                                    grad_outputs=torch.ones_like(u[:, i]), 
+                                                    create_graph=True, retain_graph=True)[0]
+            u_2_grad = torch.autograd.grad(outputs=v[:, j], inputs=uh, 
+                                                    grad_outputs=torch.ones_like(v[:, j]), 
+                                                    create_graph=True, retain_graph=True)[0]
+            inner = torch.sum((u_1_grad/torch.norm(u_1_grad))*(u_2_grad/torch.norm(u_2_grad)), dim=-1)
+
+            # print("inner shape: ", inner.shape)
+            #print("inner: ", inner)
+            #not sure if should square
+            #squaring makes it too small. 
+            #mean or sum? If we do absolute value it climbs high. 
+            #if use mean OR squared it's wayyyyy too small. 
+            #ok if use mean it can still climb. 
+            loss_orth += torch.mean(torch.abs(inner))
+    return loss_orth
 def make_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], Dict[str, torch.Tensor]]:
     if extra:
         warnings.warn(f"[make_ae_loss] Unused keys in loss config: {list(extra.keys())}")
@@ -85,11 +112,40 @@ def make_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], 
         x = targets["x"]
         recon = out["recon"]
         latent = out["latent"]
+        
         total = recon_fn(x.to(recon.device), recon)
         #ADD EXTRA THINGS REGARDING LATENT HERE. 
 
         #make sure these names are consistent. 
         return {"loss": total}
+
+    return _loss_fn
+def make_dual_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], Dict[str, torch.Tensor]]:
+    if extra:
+        warnings.warn(f"[make_ae_loss] Unused keys in loss config: {list(extra.keys())}")
+    recon_fn = mse_loss if recon_type == "mse" else bce_loss
+    common_fn = mse_loss
+    def _loss_fn(out, targets, lr1, lr2, lc, lo1, lo2):
+        x1 = targets["x1"]
+        x2 = targets["x2"]
+        recon1 = out["recon"]["x1"]
+        recon2 = out["recon"]["x2"]
+        latentuh1 = out["latent"]["latentUh1"]
+        latentu1 = out["latent"]["latentU1"]
+        latentc1 = out["latent"]["latentC1"]
+        latentuh2= out["latent"]["latentUh2"]
+        latentu2 = out["latent"]["latentU2"]
+        latentc2 = out["latent"]["latentC2"]
+        recon_loss_1 = recon_fn(x1.to(recon1.device), recon1)
+        recon_loss_2 = recon_fn(x2.to(recon2.device), recon2)
+
+        com_loss =  common_fn(latentc1, latentc2)
+
+        orth_loss_1 = orthLoss(latentu1, latentc1, latentuh1)
+        orth_loss_2 = orthLoss(latentu2, latentc2, latentuh2)
+
+        loss = lr1*recon_loss_1 + lr2*recon_loss_2 + lc*com_loss + lo1*orth_loss_1 + lo2*orth_loss_2
+        return {"loss": loss}
 
     return _loss_fn
 
@@ -115,6 +171,7 @@ LOSS_FACTORY = {
     "vae": make_vae_loss,
     "ae": make_ae_loss,
     "contrastive": make_contrastive_loss,
+    "dual_ae": make_dual_ae_loss
 }
 
 

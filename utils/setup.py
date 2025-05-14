@@ -1,30 +1,67 @@
 from models.autoencoder import Autoencoder
+from models.dualConvAutoencoder import ConvolutionalAutoencoder
 from torch.optim import Adam
 from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
 from scheduler import ScalarSchedule, SchedBundle
+from runManager import RunManager
+from torch.utils.data import DataLoader
+from logger import Logger
+
 from data import get_dataloaders
 from losses import make_loss_fn
 import torch
+import torch.nn as nn
+from typing import Optional, Dict, Any
+from dataclasses import dataclass
 
-def build_model(config):
+@dataclass
+class ExperimentBundle:
+    model: nn.Module
+    #loss_fn: Callable
+    optimizer: torch.optim.Optimizer
+    scheduler: Optional[Any]
+    #hyp_scheduler: SchedBundle
+    dataloaders: Dict[str, DataLoader]
+    logger: Logger
+    run_manager: RunManager
+    metadata: dict
+def setup_experiment(config) -> ExperimentBundle:
+    device = config["device"]
+    dataloaders, meta = build_dataloaders(config)
+
+    #config = enrich_config_with_metadata(config, meta)
+    model = build_model(config, meta).to(device)
+    optimizer = build_optimizer(model, config)
+    scheduler = build_scheduler(optimizer, config)
+
+    #dTODO: Deal with resume 
+    run_manager = RunManager(config, "runs", False)
+    #don't love this reference here. 
+    #TODO: Pass the metadata into logger, and deal with hyperparameter schedule in logger
+    logger = Logger(run_manager.run_dir, config)
+    return ExperimentBundle(model, optimizer, scheduler, dataloaders, logger, run_manager, meta)
+
+def build_model(config, metadata):
     #load the loss function from the config.loss function. 
+    #TODO: DO i want to return the loss function and hyp scheduler?
     model_cfg = config["model"]
 
     loss_fn = make_loss_fn(config["loss"])
     hyp_scheduler = build_hyp_scheduler(config)
     #TODO: What to do if don't input these things. 
     if model_cfg["type"] == "Autoencoder":
-        return Autoencoder(
-            model_cfg = model_cfg,
-            loss_fn = loss_fn, 
-            hyp_sched = hyp_scheduler, 
-            device = config["device"]
-        )
+        model = Autoencoder
     #ADD other model types here. 
-
+    elif model_cfg["type"] == "DualConvAutoencoder":
+        model = ConvolutionalAutoencoder
     else:
         raise ValueError(f"Unknown model type: {config['model']['type']}")
-
+    return model(model_cfg = model_cfg,
+            loss_fn = loss_fn, 
+            hyp_sched = hyp_scheduler, 
+            metadata = metadata, 
+            device = config["device"],
+            )
 def build_optimizer(model, config):
 
     opt_cfg = config["optimizer"]
@@ -67,6 +104,7 @@ def build_hyp_scheduler(config):
 
 def build_dataloaders(config):
     #TODO: Fix get_dataloaders, pick what parameters I want passed into this. Fix the path vs dataset name problem. 
+    #Should load the necessary things from config here rather than passing it further down. 
     data_cfg = config["data"]
     return get_dataloaders(
         #path = data_cfg["path"], 

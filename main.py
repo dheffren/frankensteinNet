@@ -3,7 +3,7 @@
 # dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas"]
 # ///
 import yaml
-from utils.setup import build_model, build_optimizer, build_scheduler, build_dataloaders, build_hyp_scheduler
+from utils.setup import build_model, build_optimizer, build_scheduler, build_dataloaders, build_hyp_scheduler, setup_experiment
 from train import Trainer
 from runManager import RunManager
 from logger import Logger
@@ -40,7 +40,11 @@ def parse_args():
 args = parse_args()
 
 # Load config
-with open("configs/" + args.config) as f:
+if args.config[0] == '/':
+    path = args.config
+else:
+    path = "configs/" + args.config
+with open(path) as f:
     config = yaml.safe_load(f)
 
 if args.seed is not None: 
@@ -63,21 +67,13 @@ set_seed(config["seed"])
 # Build components
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 config["device"] = str(device)
-
-model = build_model(config).to(device)
-
-optimizer = build_optimizer(model, config)
-scheduler = build_scheduler(optimizer, config)
-
-train_loader, val_loader = build_dataloaders(config)
-runManager = RunManager(config, "runs", args.resume)
-#don't love this reference here. 
-logger = Logger(runManager.run_dir, config)
-
+print(device)
+#Note: training data affects config. 
+bundle = setup_experiment(config)
 # Train
-trainer = Trainer(model, optimizer, scheduler, (train_loader, val_loader), logger, config)
+trainer = Trainer(bundle.model, bundle.optimizer, bundle.scheduler, bundle.dataloaders, bundle.logger, config)
 trainer.train()
 
 # Plot figures and get summary stats. 
 # TODO: Save in plots instead? 
-plot_all_metrics(runManager.run_dir)
+plot_all_metrics(bundle.run_manager.run_dir)

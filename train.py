@@ -13,7 +13,7 @@ class Trainer:
     """
     def __init__(self, model, optimizer, scheduler, dataloaders, logger, config):
         self.model = model
-        self.train_loader, self.val_loader = dataloaders
+        self.train_loader, self.val_loader = dataloaders["train"], dataloaders["val"]
         self.logger = logger
         self.optimizer = optimizer
         self.scheduler = scheduler
@@ -48,10 +48,16 @@ class Trainer:
     def train_epoch(self, epoch):
         self.model.train()
         total_loss = 0
+        avg_batch_time = 0
+        numBatch = 0
         for batch in self.train_loader:
             self.optimizer.zero_grad()
             #should only contain primary loss and any loss components or fast metrics. 
+            start = time.time()
             loss_dict = self.model.compute_loss(batch, epoch)
+            end = time.time()
+            avg_batch_time += end-start
+            numBatch+=1
             loss = loss_dict["loss"]
             loss.backward()
             self.optimizer.step()
@@ -65,6 +71,7 @@ class Trainer:
             #what on earth is this? - total number of optimizer steps. 
             self.global_step += 1
         avg_loss = total_loss / len(self.train_loader)
+        print(f"average batch time: {avg_batch_time/numBatch}")
         return avg_loss
     def evaluate(self, epoch, use_gradients = False):
         #maybe only include jacobian terms in training not validation. 

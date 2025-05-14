@@ -1,11 +1,11 @@
 # ---------- Metadata ----------
-project_name: autoencoder
+project_name: ConformalConvolutionalAutoencoder
 run_name: vae_latent16_lr1e3_seed1
 seed: 234
 
 # ---------- Model ----------
 model:
-  type: Autoencoder
+  type: DualConvAutoencoder
   variant: beta
   input_dim: 784
   latent_dim: 64
@@ -25,7 +25,7 @@ training:
 
 # ---------- Loss Weights ----------
 loss:
-  type: ae
+  type: dual_ae
   recon_type: mse
   reconstruction_weight: 1.0
   kl_weight: 0.1
@@ -40,12 +40,18 @@ scheduler:
   step_size: 20
   gamma: 0.5
   log: True
-
+# -------- Hyperparameter Scheduler------------
+scheduler_hyp: 
+  lr1: {type: constant, initial : 1, final: 1}
+  lr2: {type: constant, initial: 1, final: 1}
+  lc: {type: linear, initial: 0.0, final: 1.0, start_epoch: 30, end_epoch: 100 }
+  lo1: {type: linear, initial: 0.0, final: 1.0, start_epoch: 50, end_epoch: 100}
+  lo2: {type: linear, initial: 0.0, final: 1.0, start_epoch: 50, end_epoch: 100}
 # ---------- Data ----------
 data:
   task: reconstruction
-  dataset: MNIST
-  path: data/
+  dataset: ballRotating
+  path: data/ballRotating #This should be data then the method itself saves in ball rotating. 
   val_split: 0.3
   batch_size: 256
   shuffle: true

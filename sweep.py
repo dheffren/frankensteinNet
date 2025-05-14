@@ -62,13 +62,15 @@ def launch_main(temp_cfg: Path):
 
 def launch_sweep(spec_path: Path):
     spec = yaml.safe_load(open(spec_path))
+    
     base_cfg = yaml.safe_load(open(spec["base_config"]))
-
+    #add this to give own run name and not copy from the configs/base file. 
+    base_cfg["run_name"] = spec["run_name"]
     sweep_params = spec["sweep"]
     method       = spec.get("method", "grid").lower()
     sweep_id = spec_path.stem
     #replacement for "time based" run saving where each run of a sweep would have a different time. 
-    sweep_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")   # one stamp per sweep
+    sweep_stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")   # one stamp per sweep
 
 
     if method == "grid":
@@ -88,13 +90,13 @@ def launch_sweep(spec_path: Path):
     boot_base = boot_cfg.get("resample_seed_base", 0)
     tmp_dir = Path(".sweep_tmp")
     tmp_dir.mkdir(exist_ok=True)
-
+    
     manifest_rows = []
-
+    print(f"BASE {base_cfg['run_name']}")
     for idx, overrides in enumerate(variants):
         for seed in seeds:
             cfg_variant  = apply_overrides(deepcopy(base_cfg), overrides)
-            
+            print(f"variant {cfg_variant['run_name']}")
             if seed is not None:
                 cfg_variant["seed"] = seed
             # embed sweep metadata
@@ -106,14 +108,16 @@ def launch_sweep(spec_path: Path):
             for b in boot_iter:
                 cfg_run = deepcopy(cfg_variant)
                 if "run_name" not in cfg_run:
+                    print("new run name: ")
                     cfg_run["run_name"] = sweep_id        # e.g. "extraGoodRun"
-
+                print(cfg_run["run_name"])
                 if b is not None:
                     cfg_run["bootstrap"] = {"enabled": True, "seed": boot_base + b}
                     cfg_run["_sweep"]["boot"] = b
 
                 # write temp config
-                with tempfile.NamedTemporaryFile(dir=tmp_dir,
+                #mode = "w" write to text stream rather than binary file mode. 
+                with tempfile.NamedTemporaryFile(mode = "w", dir=tmp_dir,
                                                  suffix=".yaml",
                                                  delete=False) as tmp_f:
                     yaml.safe_dump(cfg_run, tmp_f)
@@ -132,6 +136,7 @@ def launch_sweep(spec_path: Path):
     # ------------------------------------------------------------------
     # Save sweep manifest
     # ------------------------------------------------------------------
+    #TODO: Change where sweep manifest is saved, do whatever metrics or things I want afterward. 
     man_path = Path("runs") / f"{sweep_id}_manifest.csv"
     man_path.parent.mkdir(exist_ok=True, parents=True)
     if manifest_rows:
@@ -147,8 +152,8 @@ def launch_sweep(spec_path: Path):
 # ---------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("sweep_spec", help="Path to sweep YAML.")
-    args = parser.parse_args()
-    launch_sweep(Path(args.sweep_spec))
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--config", help="Path to sweep YAML.")
+args = parser.parse_args()
+launch_sweep(Path(args.config))

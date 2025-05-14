@@ -16,9 +16,10 @@ def get_dataloaders(config, train = True):
     train_loader = DataLoader(train_set, batch_size=cfg["batch_size"], shuffle=cfg["shuffle"], num_workers=cfg["num_workers"])
     val_loader = DataLoader(val_set, batch_size=cfg["batch_size"], shuffle=False, num_workers=cfg["num_workers"])
 
-    return train_loader, val_loader
+    return {"train": train_loader, "val":val_loader}, full_dataset.get_metadata()
 def get_dataset(config, train = True):
     dataset_name = config["data"]["dataset"]
+    print(f"dataset_name: {dataset_name}")
     path = config["data"]["path"]
     transform = get_transforms(config, train = train)
     from datasets.data_registry import get_registered_dataset
@@ -37,10 +38,11 @@ def get_dataset(config, train = True):
     return full_dataset
     """
 def get_transforms(config, train = True):
+    #THIS IS THE PROBLEM. 
     tfm_cfg = config.get("transform_config", {})
     if train:
         return transforms.Compose([
-            transforms.Resize(tfm_cfg.get("resize", 28)),
+            #transforms.Resize(tfm_cfg.get("resize", 28)),
             transforms.ToTensor(),
             transforms.Normalize(*tfm_cfg.get("normalize", [0.5, 0.5]))
         ])

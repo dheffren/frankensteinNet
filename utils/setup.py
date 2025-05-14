@@ -29,16 +29,16 @@ def setup_experiment(config) -> ExperimentBundle:
     device = config["device"]
     dataloaders, meta = build_dataloaders(config)
 
-    #config = enrich_config_with_metadata(config, meta)
+    
     model = build_model(config, meta).to(device)
     optimizer = build_optimizer(model, config)
     scheduler = build_scheduler(optimizer, config)
 
-    #dTODO: Deal with resume 
+    #TODO: Deal with resume 
     run_manager = RunManager(config, "runs", False)
     #don't love this reference here. 
     #TODO: Pass the metadata into logger, and deal with hyperparameter schedule in logger
-    logger = Logger(run_manager.run_dir, config)
+    logger = Logger(run_manager.run_dir, config, meta)
     return ExperimentBundle(model, optimizer, scheduler, dataloaders, logger, run_manager, meta)
 
 def build_model(config, metadata):

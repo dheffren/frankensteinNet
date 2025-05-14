@@ -78,10 +78,7 @@ def make_vae_loss(kl_weight: float = 1.0,
 def orthLoss(u, v, uh):
     """
     Call this for u1, c1 and u2, c2, wit
-    """
-    uh = uh.clone().detach().requires_grad_()
-    u = u.detach()
-    v = v.detach()
+    """  
     loss_orth = 0
     for i in range(u.shape[1]):
         for j in range(v.shape[1]):
@@ -109,10 +106,10 @@ def make_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], 
     recon_fn = mse_loss if recon_type == "mse" else bce_loss
 
     def _loss_fn(out, targets):
-        x = targets["x"]
-        recon = out["recon"]
-        latent = out["latent"]
-        
+        x = targets["recon_target"]["x"]
+        recon = out["recon"]["x"]
+        latent = out["latent"]["latent"]
+        #TODO: More gneral method here? 
         total = recon_fn(x.to(recon.device), recon)
         #ADD EXTRA THINGS REGARDING LATENT HERE. 
 
@@ -126,16 +123,17 @@ def make_dual_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, A
     recon_fn = mse_loss if recon_type == "mse" else bce_loss
     common_fn = mse_loss
     def _loss_fn(out, targets, lr1, lr2, lc, lo1, lo2):
-        x1 = targets["x1"]
-        x2 = targets["x2"]
+     
+        x1 = targets["recon_target"]["x1"]
+        x2 = targets["recon_target"]["x2"]
         recon1 = out["recon"]["x1"]
         recon2 = out["recon"]["x2"]
-        latentuh1 = out["latent"]["latentUh1"]
-        latentu1 = out["latent"]["latentU1"]
-        latentc1 = out["latent"]["latentC1"]
-        latentuh2= out["latent"]["latentUh2"]
-        latentu2 = out["latent"]["latentU2"]
-        latentc2 = out["latent"]["latentC2"]
+        latentuh1 = out["latent"]["uh1"]
+        latentu1 = out["latent"]["u1"]
+        latentc1 = out["latent"]["c1"]
+        latentuh2= out["latent"]["uh2"]
+        latentu2 = out["latent"]["u2"]
+        latentc2 = out["latent"]["c2"]
         recon_loss_1 = recon_fn(x1.to(recon1.device), recon1)
         recon_loss_2 = recon_fn(x2.to(recon2.device), recon2)
 

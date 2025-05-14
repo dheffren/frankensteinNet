@@ -3,7 +3,7 @@ import torch.nn as nn
 
 #TODO: Finish implementing at least one model. 
 class Autoencoder(nn.Module):
-    def __init__(self, model_cfg, loss_fn, hyp_sched,  device = "cpu"):
+    def __init__(self, model_cfg, loss_fn, hyp_sched,  metadata, device = "cpu", track_grad = True):
         super().__init__()
         
         #maybe should make this part modular somehow? So it doesn't have to be model specific? 
@@ -29,7 +29,7 @@ class Autoencoder(nn.Module):
         self.loss_fn = loss_fn
         self.hyp_sched = hyp_sched
         self.device = device
-    
+        
     def forward(self, x):
         #TODO: Add shape diagnostic. Not sure how lol. 
         x = x.view(x.shape[0], -1)
@@ -40,7 +40,7 @@ class Autoencoder(nn.Module):
         #need to generalize this better
         reconstruction = reconstruction.view(x.shape[0], 1, 28, 28)
  
-        return {"recon":reconstruction, "latent":latent}
+        return {"recon":{"x": reconstruction}, "latent":{"latent":latent}}
     def compute_loss(self, batch, epoch):
         #pass in forward method to support multiple tasks/losses. 
         #maybe instead of this do something else. 
@@ -48,26 +48,26 @@ class Autoencoder(nn.Module):
         out = self(**inputs)
         #UPDATE THE SCHEDULED HYPERPARAMETERS HERE AND PASS INTO LOSS FUNCTION. Use epoch. 
         return self.loss_fn(out, targets)
-    def prepare_input(self, batch):
+    def prepare_input(self, batch, requires_grad = True):
         if isinstance(batch, torch.Tensor):
             #shouldn't we return x as an aux as well. 
             x = batch
-            inputs  = {"x": x.to(self.device)}
-            targets = {"x": x}                      
+            inputs  = {"x": x.to(self.device).requires_grad_(requires_grad)}
+            targets = {"recon_target": {"x": x}}                    
             return inputs, targets
         elif isinstance(batch, (list, tuple)):
             if len(batch) == 1:
                 x = batch[0]
-                inputs  = {"x": x.to(self.device)}
-                targets = {"x": x}
+                inputs  = {"x": x.to(self.device).requires_grad_(requires_grad)}
+                targets = {"recon_target": {"x": x}}                    
             elif len(batch) >= 2:
                 #don't do anything with the rest - don't know what to do lol. 
                 x, y = batch[:2]
-                inputs  = {"x": x.to(self.device)}
-                targets = {"x": x, "y": y}          # recon + label
+                inputs  = {"x": x.to(self.device).requires_grad_(requires_grad)}
+                targets = {"recon_target": {"x": x}, "labels":{"y": y}}  # recon + label
             return inputs, targets
         elif isinstance(batch, dict):
-            #TODO: Check this. 
+            #TODO: Fix this to fit the above stuff. 
             x = batch["x"]
             inputs  = {k: (v.to(self.device) if torch.is_tensor(v) else v)
                        for k, v in batch.items()

@@ -8,12 +8,23 @@ def compute_mse(x, y):
 def compute_mae(x, y):
     return F.l1_loss(x, y).item()
 def compute_jacobian_fro_norm(x, y):
+    """
+    Assumptions on inputs:
+    y is a function of x. 
+    y seems to be batchSize x d. 
+    What if we wanted a different shape for y? 
+    x can be any shape batchSize x dim1 x dim2 x.... dim k 
+    J we stack 
+    
+    """
     J = []
     #problem was that this was under nograd.
     for i in range(y.shape[1]):
         #element 0 of tensors does not require grad and does not have a grad_fn
         grad = torch.autograd.grad(y[:, i].sum(), x, retain_graph=True, create_graph=False)[0]
+      
         J.append(grad.view(grad.shape[0], -1))  # (B, D)
+    
     J = torch.stack(J, dim=1)  # (B, output_dim, input_dim)
     norms = torch.norm(J, dim=(1, 2), p='fro')  # (B,)
     return norms.mean().item()

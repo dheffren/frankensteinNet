@@ -49,7 +49,7 @@ class Logger:
     Checkpoints
     All saved plots, metrics, versions, seed, config, hyperparameters, diagnostic artifacts, and checkpoints go through th elogger. 
     """
-    def __init__(self, run_dir, config,  use_wandb = True):
+    def __init__(self, run_dir, config, meta, use_wandb = True):
         self.use_wandb = use_wandb and WANDB_AVAILABLE
         #initial run name
         self.run_dir = run_dir
@@ -60,7 +60,7 @@ class Logger:
 
         self._current_metrics = {}
         self._last_step = None
-       
+        self.meta = meta
         self.field_names = self._collect_all_fieldnames(config)
         print(self.field_names)
         self._rows = []

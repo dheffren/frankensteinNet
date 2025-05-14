@@ -22,8 +22,10 @@ class BallRotatingDataset(torch.utils.data.Dataset):
         self.dataAmt = amount
         self.data_shape = (self.input_channels, img_size, img_size)
         self.csv_path = self.root/"data.csv"
+       
         #TODO: Make it so don't have to generate data every time. 
         self.create_data(output_csv_path = self.csv_path)
+        
         self.entries = pd.read_csv(self.csv_path)
     def __len__(self):
         return self.dataAmt
@@ -152,8 +154,8 @@ def circular_motion(center, radius, angle_deg):
 # 2. Generate a single frame given angles
 def generate_frame(angle_common1, angle_common2, angle_private1, angle_private2, img_size=256):
     # Create blank images
-    img1 = Image.new('RGB', (img_size, img_size), (255, 255, 255))
-    img2 = Image.new('RGB', (img_size, img_size), (255, 255, 255))
+    img1 = Image.new('RGB', (img_size, img_size), (0,0,0))
+    img2 = Image.new('RGB', (img_size, img_size), (0,0,0))
     draw1 = ImageDraw.Draw(img1)
     draw2 = ImageDraw.Draw(img2)
 
@@ -219,6 +221,3 @@ def visualize_pairs_png(img_paths1, img_paths2, num_pairs=5):
     plt.savefig("samples/first_5_pairs.png", dpi=300)
     plt.close()
     print("Saved first 5 pairs visualization at samples/first_5_pairs.png")
-
-
-    

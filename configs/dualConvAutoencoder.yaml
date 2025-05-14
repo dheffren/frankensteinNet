@@ -67,11 +67,21 @@ diagnostics:
   - log_reconstruction_plot
   - jacobian_norm_diag
 diagnostics_config:
-  tensor_stats_diag_keys: ["latent", "recon"]
+  tensor_stats_diag_keys: ["latent_uh1", "latent_uh2", "recon_x"]
   tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]
-  jacobian_norm_diag_keys: ["latent", "recon"]
+  #need to make this work for input. Because not taking grad with respect to the target. 
+  jacobian_norm_diag_pairs: 
+    - of: "latent_uh1"
+      wrt: "latent_u1"
+    - of: "latent_uh1"
+      wrt: "latent_c1"
+    - of: "latent_uh2"
+      wrt: "latent_u2"
+    - of: "latent_uh2"
+      wrt: "latent_c2"
+
   jacobian_norm_diag_suffixes: ["spectral", "jacfro"]
-  layer_pca_keys: ["latent"]
+  layer_pca_layers: ["latent_uh1", "latent_uh2"]
 # ---------- Logging ----------
 logging:
   use_wandb: true

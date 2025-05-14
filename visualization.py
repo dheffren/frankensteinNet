@@ -2,10 +2,23 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 
-def make_reconstruction_plot(x, x_recon, epoch, num_images=8):
+def make_reconstruction_plot(x, x_recon, epoch, num_images=8, meta = None):
     # Plot original and reconstruction
     fig, axs = plt.subplots(2, num_images, figsize=(num_images * 1.5, 3))
     #TODO: See what it looks like. 
+    normalizer = meta.get("normalizer", None)
+    if normalizer is not None: 
+        x = normalizer.denormalize(x)
+        x_recon = normalizer.denormalize(x_recon)
+        print("mean: ", x.mean())
+        print("min: ", x.min())
+        print("max: ", x.max())
+        print("meanr: ", x_recon.mean())
+        print("minr: ", x_recon.min())
+        print("maxr: ", x_recon.max())
+    #do i need these. 
+    x = renormalize_data(x)
+    x_recon = renormalize_data(x_recon)
     for i in range(num_images):
         #hopefully this is pass by instance. 
         plot_tensor(axs[0,i], x[i])
@@ -19,8 +32,49 @@ def make_reconstruction_plot(x, x_recon, epoch, num_images=8):
     fig.suptitle(f"Reconstructions — Epoch {epoch}")
     plt.tight_layout()
     return fig
+def make_dual_reconstsruction_plot(x1,x1_recon, x2, x2_recon, epoch, num_images= 8, meta = None):
 
+    #renormalize then cut off the stuff "above". 
+    normalizer = meta.get("normalizer", None)
+    if normalizer is not None: 
+        x1= normalizer.denormalize(x1)
+        x1_recon = normalizer.denormalize(x1_recon)
+        x2= normalizer.denormalize(x2)
+        x2_recon = normalizer.denormalize(x2_recon)
+        print("mean: ", x2.mean())
+        print("min: ", x2.min())
+        print("max: ", x2.max())
+        print("meanr: ", x2_recon.mean())
+        print("minr: ", x2_recon.min())
+        print("maxr: ", x2_recon.max())
+    x1 = renormalize_data(x1)
+    x1_recon = renormalize_data(x1_recon)
+    x2 = renormalize_data(x2)
+    x2_recon = renormalize_data(x2_recon)
+    fig, axs = plt.subplots(4, num_images, figsize=(num_images * 1.5, 3))
+    #TODO: See what it looks like. 
+    for i in range(num_images):
+        #hopefully this is pass by instance. 
+        plot_tensor(axs[0,i], x1[i])
+        axs[0, i].axis('off')
+        plot_tensor(axs[1, i], x1_recon[i])
+        axs[1, i].axis('off')
+        plot_tensor(axs[2,i], x2[i])
+        axs[2, i].axis('off')
+        plot_tensor(axs[3, i], x2_recon[i])
+        axs[3, i].axis('off')
 
+    axs[0, 0].set_ylabel("Original X1", fontsize=12)
+    axs[1, 0].set_ylabel("Reconstruction X1", fontsize=12)
+    axs[2, 0].set_ylabel("Original X2", fontsize=12)
+    axs[3, 0].set_ylabel("Reconstruction X2", fontsize=12)
+    fig.suptitle(f"Reconstructions — Epoch {epoch}")
+    plt.tight_layout()
+    return fig
+def renormalize_data(x):
+    #assume data in -1, 1 range. Not sure if RIGHT but assume lol. 
+
+    return (255*(x)).to(dtype = torch.uint8)
 def plot_tensor(ax, img_tensor):
     if img_tensor.shape[0] == 1:
         ax.imshow(img_tensor[0], cmap='gray')

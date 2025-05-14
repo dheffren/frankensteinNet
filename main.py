@@ -71,7 +71,7 @@ print(device)
 #Note: training data affects config. 
 bundle = setup_experiment(config)
 # Train
-trainer = Trainer(bundle.model, bundle.optimizer, bundle.scheduler, bundle.dataloaders, bundle.logger, config)
+trainer = Trainer(bundle.model, bundle.optimizer, bundle.scheduler, bundle.dataloaders, bundle.logger, bundle.metadata, config)
 trainer.train()
 
 # Plot figures and get summary stats. 

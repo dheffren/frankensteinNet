@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 class ConvolutionalAutoencoder(nn.Module):
-    def __init__(self, model_cfg, loss_fn, hyp_sched,  metadata, device = "cpu"):
+    def __init__(self, model_cfg, loss_fn, hyp_sched,  metadata, device = "cpu", track_grad = True):
         #what? 
         super(ConvolutionalAutoencoder, self).__init__()
         #assuming iamge dim 256x256
@@ -30,6 +30,7 @@ class ConvolutionalAutoencoder(nn.Module):
         self.loss_fn = loss_fn
         self.hyp_sched = hyp_sched
         self.device = device
+        self.track_grad = track_grad
 
         self.convEncoder1 = ConvolutionalEncoder(in_channels, out_channels, kernel_size, self.data_size[1:])
         self.convEncoder2= ConvolutionalEncoder(in_channels, out_channels, kernel_size, self.data_size[1:])
@@ -131,8 +132,12 @@ class ConvolutionalAutoencoder(nn.Module):
         print(f"x2 shape: {x2.shape}")
         #NOTE: When Have those extra layers but take a gradient skipping over those, weird things happen. 
         uh1 = self.convEncoder1(x1)  # Encode S1 (Rotations)
+        
         print(f"uh1 shape: {uh1.shape}")
         uh2 = self.convEncoder2(x2)
+        if self.track_grad:
+            uh1.requires_grad_(True)
+            uh2.requires_grad_(True)
         print(f"uh2 shape: {uh2.shape}")
         #print(uh1.shape)
         #print(uh2.shape)
@@ -166,12 +171,12 @@ class ConvolutionalAutoencoder(nn.Module):
         #return (ug, vg), uh, u, v, x_recon
         output_dict = {
             "recon": {"x1": x_recon1, "x2": x_recon2}, 
-            "latent": {"latentUh1": uh1, 
-        "latentUh2": uh2, 
-        "latentU1": u, 
-        "latentU2": v, 
-        "latentC1": c1, 
-        "latentC2": c2}, 
+            "latent": {"uh1": uh1, 
+        "uh2": uh2, 
+        "u1": u, 
+        "u2": v, 
+        "c1": c1, 
+        "c2": c2}, 
         }
         return output_dict 
     def compute_loss(self, batch, epoch):
@@ -179,18 +184,18 @@ class ConvolutionalAutoencoder(nn.Module):
         inputs, targets = self.prepare_input(batch)
         out = self(**inputs)
         #Update scheduled hyperparameters 
-        lr1 = self.hyp_sched.get("lr1", epoch)
-        lr2 = self.hyp_sched.get("lr2", epoch)
-        lc = self.hyp_sched.get("lc", epoch)
-        lo1 = self.hyp_sched.get("lo1", epoch)
-        lo2 = self.hyp_sched.get("lo2", epoch)
-        return self.loss_fn(out, targets, lr1, lr2, lc, lo1, lo2)
-    def prepare_input(self, batch):
+        #Check if this is robust. 
+        #I'm like 90% sure this does what I want it to do. Maybe I should pass in dict instead? 
+        return self.loss_fn(out, targets,**self.hyp_sched.get_all(epoch))
+        
+    def prepare_input(self, batch, requires_grad = False):
         #not sure how this generalizes at ALL to what I was doing before - with one input at a time. 
         x1, x2 = batch
-        inputs = {"x1": x1.to(self.device).requires_grad_(), "x2": x2.to(self.device).requires_grad_()}
-        targets = {"x1": x1, "x2": x2}
+        #should I remove requires grad here? 
+        inputs = {"x1": x1.to(self.device).requires_grad_(requires_grad), "x2": x2.to(self.device).requires_grad_(requires_grad)}
+        targets = {"recon_target": {"x1": x1, "x2": x2}}
         return inputs, targets
+    
     def freeze_common(self, freeze):
         for name, p in self.project_c1.named_parameters():
             p.requires_grad = freeze

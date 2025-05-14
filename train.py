@@ -11,20 +11,23 @@ class Trainer:
 
     Specify model, optimizer, dataset and diagnostics outside of the trainer class.  
     """
-    def __init__(self, model, optimizer, scheduler, dataloaders, logger, config):
+    def __init__(self, model, optimizer, scheduler, dataloaders, logger, meta, config):
         self.model = model
         self.train_loader, self.val_loader = dataloaders["train"], dataloaders["val"]
         self.logger = logger
         self.optimizer = optimizer
         self.scheduler = scheduler
+        self.meta = meta
         self.global_step = 0
         self.config = config
         return 
     def train(self):
         for epoch in range(self.config["training"]["epochs"]):
+            #TODO: Placeholder
+            use_gradients = True
             train_loss = self.train_epoch(epoch)
 
-            val_loss = self.evaluate(epoch)
+            val_loss = self.evaluate(epoch, use_gradients)
             print(f"Epoch {epoch}: Train {train_loss}, Val {val_loss}")
             #update scheduler - if no scheduler, should still work as a constant. 
             self.scheduler.step() #-- if want to update lr in the middle of epoch, will have to do in train epoch. 
@@ -107,7 +110,7 @@ class Trainer:
                 print(f"[Diagnostics] {name}")
                 t0 = time.time()
                 
-                outputs = fn(self.model, self.val_loader, self.logger, epoch, self.config) or {}
+                outputs = fn(self.model, self.val_loader, self.logger, epoch, self.config, self.meta) or {}
                 #log diagnostic scalars here instead. 
                 for field, value in outputs.items():
                     self.logger.log_scalar(f"{name}/{field}", value, epoch)

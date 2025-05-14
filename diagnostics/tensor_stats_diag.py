@@ -11,7 +11,7 @@ suffix_fns = {
 }
 
 @register_diagnostic()
-def tensor_stats_diag(model, val_loader, logger, epoch, cfg):
+def tensor_stats_diag(model, val_loader, logger, epoch, cfg, meta):
     """
     Logs mean, std, min, max of a specified tensor in model output.
     Requires `cfg["diagnostics"]["tensor_stats_key"]` to be set.

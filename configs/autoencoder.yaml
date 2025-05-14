@@ -63,9 +63,15 @@ diagnostics:
 diagnostics_config:
   tensor_stats_diag_keys: ["latent", "recon"]
   tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]
-  jacobian_norm_diag_keys: ["latent", "recon"]
+  jacobian_norm_diag_pairs: 
+    - of: "latent_latent"
+      wrt: "recon_x"
+    - of: "x"
+      wrt: "latent_latent"
+    - of: "x"
+      wrt: "recon_x"
   jacobian_norm_diag_suffixes: ["spectral", "jacfro"]
-  layer_pca_keys: ["latent"]
+  layer_pca_layers: ["latent_latent"]
 # ---------- Logging ----------
 logging:
   use_wandb: true

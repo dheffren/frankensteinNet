@@ -31,5 +31,43 @@
 
 
 ## Config File Layout
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Outline of Program run Order
+    Command Line Functions: 
+    Main.py - Call ONE run of a model given a config file (called from sweep.py). If not called from sweeps, runs in runs/manualRuns. 
+    Sweep.py - Runs a sweep based on sweep_configs, saves a config in .sweep_tmp. Runs in a separate folder (runs/sweeps)
+    Manage.py - Delete and list runs. Doesn't work right now. Uses methods from RunManager. Supposed to allow to resume as well. 
+
+    Now, let's go into the loop for main.py
+    setup.py contains the "building" of the model, dataset, optimizers and schedulers based on the config. 
+    data.py constructs the dataset from datasets folder - these datasets are AUTOMATICALLY "registered' based on name. All you need to do is just make a new dataset class in datasets/*, and pass in its name in the config. 
+    Note the "path" option on datasets is a bit inconsistent rn (mnist vs other). 
+
+    get_dataloaders in setup.py (which calls data) also returns metadata - this is information which informs the construction of the model (like num channels). pass it into the model constructor, where each model will deal with it based on the specifications of the dataset file in datasets/dataset.py
+
+    Hyperparameter scheduler and a loss function are also passed into the model constructed there. Models right now do not have an "automatic" registry, so you will need to edit setup.py manually. Furthermore, the hyperparameters for each model may be very different (in model config), so you need to deal with those individually for your model. 
+
+    The loss function is customizable (to an extent): you have to specify the loss "type" to get a general type of loss function for a given task - right now you need to manually add these to the registry in losses.py. Loss functions take in hyperparameters as input, so you can use the scheduler in the model compute_loss to add different params. 
+
+    The Optimizer - needs to be added to setup.py, don' thave custom functionality yet. 
+    LR Scheduler - needs to be added to setup.py don't have custom functionality yet. 
+
+    Then, all this is passed to the Trainer, which starts the training run. 
+    This is where diagnostics are saved. 
+    The logger contains ways of saving the plot and sany scalars you might want to keep. There's a whole fiasco about dynamic vs static naming. 
+
 
 

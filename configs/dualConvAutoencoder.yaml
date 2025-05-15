@@ -56,9 +56,11 @@ data:
   batch_size: 256
   shuffle: true
   num_workers: 8
-  normalize: true
   augment: false
-
+  transforms: # make sure the transforms match transformRegistry in transformations.py. 
+    #list input keys (should correspond to the dataset input keys). 
+    "x1": [ "ToTensor", "Normalize",]
+    "x2": ["ToTensor"] # no normalize means it doesn't end up doing any normalization. This allows for NON images input as well.  
 # ---------- Diagnostics ----------
 diagnostics:
 #NOTE THESE MUST BE THE METHOD NAMES NOT THE FILE NAMES. 
@@ -67,7 +69,7 @@ diagnostics:
   - log_reconstruction_plot
   - jacobian_norm_diag
 diagnostics_config:
-  tensor_stats_diag_keys: ["latent_uh1", "latent_uh2", "recon_x"]
+  tensor_stats_diag_keys: ["latent_uh1", "latent_uh2","latent_u1", "latent_u2", "latent_c1", "latent_c2", "recon_x1", "recon_x2", ]
   tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]
   #need to make this work for input. Because not taking grad with respect to the target. 
   jacobian_norm_diag_pairs: 

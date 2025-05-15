@@ -67,14 +67,17 @@ class Autoencoder(nn.Module):
                 targets = {"recon_target": {"x": x}, "labels":{"y": y}}  # recon + label
             return inputs, targets
         elif isinstance(batch, dict):
-            #TODO: Fix this to fit the above stuff. 
+            #TODO: Make this more general? 
+            #I dont' understand this code. 
             x = batch["x"]
-            inputs  = {k: (v.to(self.device) if torch.is_tensor(v) else v)
-                       for k, v in batch.items()
-                       if k in {"x"} or k.startswith("cond_")}  # whatever you forward
-            targets = {k: v for k, v in batch.items()
-                       if k not in inputs}
-            targets.setdefault("x", x)               # recon target by default
+            y = batch["y"]
+            inputs  = {"x": x.to(self.device).requires_grad_(requires_grad)}
+            #inputs  = {k: (v.to(self.device) if torch.is_tensor(v) else v)
+                    #   for k, v in batch.items()
+                      # if k in {"x"} or k.startswith("x")}  # whatever you forward
+            #ideally would make more generic, don't really have to here though. 
+            targets = {"recon_target": {"x": x}, "labels":{"y": y}}  # recon + label
+                      # recon target by default
             return inputs, targets
 
         raise TypeError("Unknown batch format for prepare_input")

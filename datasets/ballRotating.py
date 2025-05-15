@@ -7,6 +7,7 @@ import os
 import csv
 import pandas as pd
 from pathlib import Path
+from torchvision import transforms
 @register_dataset("ballRotating")
 class BallRotatingDataset(torch.utils.data.Dataset):
     #TODO: I have a feeling the root should just be "data/" to be consistent with MNIST, then it should add its own name here. 
@@ -31,16 +32,25 @@ class BallRotatingDataset(torch.utils.data.Dataset):
         return self.dataAmt
 
     def __getitem__(self, idx):
+      
         #TODO: Add caching or lazy loading or something faster. 
         row = self.entries.iloc[idx]
         x1 = Image.open(row["path1"])
         x2 = Image.open(row["path2"])
-
+        #return data as a dict. 
+        element = {"x1": x1, "x2":x2}
+        #includes normalization. 
+       
         if self.transform:
-            x1 = self.transform(x1)
-            x2 = self.transform(x2)
-
-        return x1, x2
+      
+            transformedEle = self.transform(element)
+            return transformedEle
+        else: 
+            #still convert PIL image to tensor. 
+            transform = transforms.Compose([transforms.ToTensor()])
+             
+            element = {"x1": transform(x1), "x2":transform(x2)}
+            return element
     def get_metadata(self):
 
         return {

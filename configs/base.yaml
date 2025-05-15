@@ -1,0 +1,91 @@
+# ---------- Metadata ----------
+project_name: ConformalConvolutionalAutoencoder
+run_name: vae_latent16_lr1e3_seed1
+seed: 234
+
+# ---------- Model ----------
+model:
+  type: DualConvAutoencoder
+  variant: beta
+  input_dim: 784
+  latent_dim: 64
+  hidden_dim: 128
+  activation: relu
+
+# ---------- Training ----------
+training:
+  epochs: 20 
+  lr: .0001
+  batch_size: 64
+  weight_decay: 0.0
+  grad_clip: 1.0
+  log_interval: 1             # log loss every N epochs
+  diagnostic_interval: 10     # run diagnostics every N epochs
+  save_checkpoints: true
+
+# ---------- Loss Weights ----------
+loss:
+  type: dual_ae
+  recon_type: mse
+  reconstruction_weight: 1.0
+  kl_weight: 0.1
+  jacobian_penalty: 0.0       # optionally used during training
+
+# ---------- Optimizer / Scheduler ----------
+optimizer:
+  type: Adam
+  parameters: 
+
+scheduler:
+  enabled: True
+  step_size: 20
+  gamma: 0.5
+  log: True
+# -------- Hyperparameter Scheduler------------
+scheduler_hyp: 
+  #specific hyperparameters here. 
+  hyp_name: {type: linear, initial: 0.0, final: 1.0, start_epoch: 50, end_epoch: 100}
+# ---------- Data ----------
+data:
+  task: reconstruction
+  dataset: ballRotating
+  path: data/ballRotating #This should be data then the method itself saves in ball rotating. 
+  val_split: 0.3
+  batch_size: 256
+  shuffle: true
+  num_workers: 8
+  #TODO: add custom augmentation method. 
+  augment: false
+
+  transforms: # make sure the transforms match transformRegistry in transformations.py. 
+    #list input keys (should correspond to the dataset input keys). 
+    "x1": ["Normalize", "ToTensor"]
+    "x2": ["toTensor"] # no normalize means it doesn't end up doing any normalization. This allows for NON images input as well.  
+# ---------- Diagnostics ----------
+diagnostics: # diagnostic METHOD names - automatic saving. 
+  - tensor_stats_diag
+  - layer_pca
+  - log_reconstruction_plot
+  - jacobian_norm_diag
+diagnostics_config:
+  tensor_stats_diag_keys: ["latent_uh1", "latent_uh2","latent_u1", "latent_u2", "latent_c1", "latent_c2", "recon_x1", "recon_x2", ]
+  tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]
+  #need to make this work for input. Because not taking grad with respect to the target. 
+  jacobian_norm_diag_pairs: 
+    - of: "latent_uh1"
+      wrt: "latent_u1"
+    - of: "latent_uh1"
+      wrt: "latent_c1"
+    - of: "latent_uh2"
+      wrt: "latent_u2"
+    - of: "latent_uh2"
+      wrt: "latent_c2"
+
+  jacobian_norm_diag_suffixes: ["spectral", "jacfro"]
+  layer_pca_layers: ["latent_uh1", "latent_uh2"]
+# ---------- Logging ----------
+logging:
+  use_wandb: true
+  offline_mode: false
+  save_artifacts: true
+  verbose: true

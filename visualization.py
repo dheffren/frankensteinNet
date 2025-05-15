@@ -6,6 +6,7 @@ def make_reconstruction_plot(x, x_recon, epoch, num_images=8, meta = None):
     # Plot original and reconstruction
     fig, axs = plt.subplots(2, num_images, figsize=(num_images * 1.5, 3))
     #TODO: See what it looks like. 
+    #TODO: This doesn't work now because normalizer should act on the INPUT data structure, not this data structure. ADD Alias mapping or some other cheat method. Store in metadata? 
     normalizer = meta.get("normalizer", None)
     if normalizer is not None: 
         x = normalizer.denormalize(x)

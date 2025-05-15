@@ -50,9 +50,11 @@ data:
   batch_size: 256
   shuffle: true
   num_workers: 8
-  normalize: true
   augment: false
-
+  transforms: # make sure the transforms match transformRegistry in transformations.py. 
+    #list input keys (should correspond to the dataset input keys). 
+    "x": [ "ToTensor", "Normalize"]
+    "y": [] # no normalize means it doesn't end up doing any normalization. This allows for NON images input as well.  
 # ---------- Diagnostics ----------
 diagnostics:
 #NOTE THESE MUST BE THE METHOD NAMES NOT THE FILE NAMES. 

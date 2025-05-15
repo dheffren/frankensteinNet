@@ -189,6 +189,36 @@ class ConvolutionalAutoencoder(nn.Module):
         return self.loss_fn(out, targets,**self.hyp_sched.get_all(epoch))
         
     def prepare_input(self, batch, requires_grad = False):
+        if isinstance(batch, torch.Tensor):
+            #shouldn't we return x as an aux as well. 
+            #THROW ERROR HERE>. 
+            x = batch
+         
+            return inputs, targets
+        elif isinstance(batch, (list, tuple)):
+            if len(batch) == 1:
+                #THROW ERROR HERE
+                x = batch[0]
+                inputs  = {"x": x.to(self.device).requires_grad_(requires_grad)}
+                targets = {"recon_target": {"x": x}}                    
+            elif len(batch) >= 2:
+                #TODO: add labels here. 
+                #don't do anything with the rest - don't know what to do lol. 
+                x1, x2 = batch
+                inputs  = {"x1": x1.to(self.device).requires_grad_(requires_grad), "x2": x2.to(self.device).requires_grad_(requires_grad)}
+                targets = {"recon_target": {"x1": x1, "x2": x2}}
+            return inputs, targets
+        elif isinstance(batch, dict):
+            #TODO: add labels here
+            #TODO: Fix this to fit the above stuff. 
+            #make this more general
+            inputs  = {k: (v.to(self.device) if torch.is_tensor(v) else v)
+                       for k, v in batch.items()
+                       if k in {"x1", "x2"} or k.startswith("x")}  # whatever you forward
+            targets = {"recon_target": {k: v for k, v in batch.items()} }
+            #print("targets: ", targets)
+            # recon target by default
+            return inputs, targets
         #not sure how this generalizes at ALL to what I was doing before - with one input at a time. 
         x1, x2 = batch
         #should I remove requires grad here? 

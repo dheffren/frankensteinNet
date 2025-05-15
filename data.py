@@ -29,7 +29,8 @@ def get_dataloaders(config, train = True):
 
     metadata = full_dataset.get_metadata()
     #need to complete logic.
-    normalizer = build_normalizers(stats)
+    #TODO: add alias logic somehow. 
+    normalizer = build_normalizers(stats, None)
     metadata["normalizer"] = normalizer
     #TODO: Make normalizer work with the rest of the project.  
     return {"train": train_loader, "val":val_loader}, metadata
@@ -117,7 +118,7 @@ def compute_mean_std_for_keys(loader, keys, eps = 1e-6):
         for k in keys:
             if k not in batch: continue
             x = batch[k]  # shape: [B, C, H, W]
-            if not is_image_like(x): continuel
+            if not is_image_like(x): continue
             B, C, H, W = x.shape
             stats[k]["sum"]    += x.sum(dim=(0, 2, 3))  # sum over pixels per channel
             stats[k]["sum_sq"] += (x ** 2).sum(dim=(0, 2, 3))

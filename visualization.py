@@ -7,19 +7,7 @@ def make_reconstruction_plot(x, x_recon, epoch, num_images=8, meta = None):
     fig, axs = plt.subplots(2, num_images, figsize=(num_images * 1.5, 3))
     #TODO: See what it looks like. 
     #TODO: This doesn't work now because normalizer should act on the INPUT data structure, not this data structure. ADD Alias mapping or some other cheat method. Store in metadata? 
-    normalizer = meta.get("normalizer", None)
-    if normalizer is not None: 
-        x = normalizer.denormalize(x)
-        x_recon = normalizer.denormalize(x_recon)
-        print("mean: ", x.mean())
-        print("min: ", x.min())
-        print("max: ", x.max())
-        print("meanr: ", x_recon.mean())
-        print("minr: ", x_recon.min())
-        print("maxr: ", x_recon.max())
-    #do i need these. 
-    x = renormalize_data(x)
-    x_recon = renormalize_data(x_recon)
+   
     for i in range(num_images):
         #hopefully this is pass by instance. 
         plot_tensor(axs[0,i], x[i])
@@ -34,24 +22,12 @@ def make_reconstruction_plot(x, x_recon, epoch, num_images=8, meta = None):
     plt.tight_layout()
     return fig
 def make_dual_reconstsruction_plot(x1,x1_recon, x2, x2_recon, epoch, num_images= 8, meta = None):
-
-    #renormalize then cut off the stuff "above". 
-    normalizer = meta.get("normalizer", None)
-    if normalizer is not None: 
-        x1= normalizer.denormalize(x1)
-        x1_recon = normalizer.denormalize(x1_recon)
-        x2= normalizer.denormalize(x2)
-        x2_recon = normalizer.denormalize(x2_recon)
-        print("mean: ", x2.mean())
-        print("min: ", x2.min())
-        print("max: ", x2.max())
-        print("meanr: ", x2_recon.mean())
-        print("minr: ", x2_recon.min())
-        print("maxr: ", x2_recon.max())
-    x1 = renormalize_data(x1)
-    x1_recon = renormalize_data(x1_recon)
-    x2 = renormalize_data(x2)
-    x2_recon = renormalize_data(x2_recon)
+    #already renormalized, all need to do her
+    
+   # x1 = renormalize_data(x1)
+    #x1_recon = renormalize_data(x1_recon)
+    #x2 = renormalize_data(x2)
+    #x2_recon = renormalize_data(x2_recon)
     fig, axs = plt.subplots(4, num_images, figsize=(num_images * 1.5, 3))
     #TODO: See what it looks like. 
     for i in range(num_images):

@@ -63,7 +63,7 @@ diagnostics:
   - log_reconstruction_plot
   - jacobian_norm_diag
 diagnostics_config:
-  tensor_stats_diag_keys: ["latent", "recon"]
+  tensor_stats_diag_keys: ["latent_latent", "recon_x"]
   tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]
   jacobian_norm_diag_pairs: 
     - of: "latent_latent"

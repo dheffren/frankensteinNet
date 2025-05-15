@@ -24,10 +24,20 @@ def log_reconstruction_plot(model, dataloader, logger, epoch, config, meta):
 def handle_reconstructions(target, out, epoch, num_images, meta):
     x = target["recon_target"]
     recon = out["recon"]
+
+    normalizer = meta.get("normalizer", None)
+    if normalizer: 
+        #will recognize either the x1 or the x2 or the x keys and renormalize accordingly. 
+        x = normalizer.denormalize(x)
+        #bring to cpu. 
+        recon = {k:v.cpu() for k,v in recon.items()}
+        #same for recon: will have keys x1, x2 or x or whatever the corresponding input was. 
+        recon = normalizer.denormalize(recon)
     #DO I need detach
     if len(x.keys()) == 1 and len(recon.keys()) == 1:
         return make_reconstruction_plot(x["x"], recon["x"].cpu(), epoch, num_images, meta)
     elif len(x.keys()) == 2 and len(recon.keys()) == 2:
+        
         return make_dual_reconstsruction_plot(x["x1"], recon["x1"].cpu(), x["x2"], recon["x2"].cpu(), epoch, num_images, meta)
     else: 
         raise ValueError("x and recon have the wrong format")

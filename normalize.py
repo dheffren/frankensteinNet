@@ -25,18 +25,27 @@ class Normalizer:
             return (x + 1) / 2
 class NormalizerRegistry:
     """
-    Stores per key logic. Only acts on those that NEED normalization. Could do NOTHING each time. 
+    Does normalization for model inputs and outputs which is passed to reconstruction and visualization methods. 
+    The actual data normalization is called via transformRegistry.
+
+    Note: if on different devices, this doesn't work. 
     """
-    def __init__(self, norm_dict: dict[str, Normalizer]):
+    def __init__(self, norm_dict: dict[str, Normalizer], aliases: dict[str, str] = None):
         self.norms = norm_dict
+        self.aliases = aliases or {}
+    def _resolve(self, key):
+        #if output key: maps to corresponding input key. 
+        #if input key, returns itself. 
+        #if key not a valid output key, return itself. 
+        return self.aliases.get(key, key)
     def normalize(self, sample_dict: dict):
-        return {k: self.norms[k].normalize(v) if k in self.norms else v
+        return {k: self.norms[self._resolve(k)].normalize(v) if self._resolve(k) in self.norms else v
                 for k, v in sample_dict.items()}
 
     def denormalize(self, sample_dict: dict):
-        return {k: self.norms[k].denormalize(v) if k in self.norms else v
+        return {k: self.norms[self._resolve(k)].denormalize(v) if self._resolve(k) in self.norms else v
                 for k, v in sample_dict.items()}
-def build_normalizers(stats) -> NormalizerRegistry:
+def build_normalizers(stats, aliases = None) -> NormalizerRegistry:
     """
     Metadata: 
     a dictionary with mean and standard deviation. 
@@ -46,8 +55,8 @@ def build_normalizers(stats) -> NormalizerRegistry:
     mean_dict  = stats["mean"] # in case of no keys with normalize - should just return empty dictionary. Then there'd be no keys. Ie normalizers would be empty dict. 
     std_dict = stats["std"]
     normalizers = {}
-
+    
     for k in mean_dict: 
         if k in std_dict:  #extra safety - should always be true. 
             normalizers[k] = Normalizer(mean_dict[k], std_dict[k]) #Deal with zscore? - at this point the logic doesn't allow for anything else. 
-    return NormalizerRegistry(normalizers)
+    return NormalizerRegistry(normalizers, aliases)

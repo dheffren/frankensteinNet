@@ -1,7 +1,7 @@
 import torch
 from .suffix_fn_registry import get_suffix_fn, is_pairwise_suffix
 from .registry import register_diagnostic
-
+from utils.flatten import flatten
 #TODO: More gneeral? 
 suffix_fns = {
     "mean": lambda t: t.mean().item(),
@@ -30,7 +30,7 @@ def tensor_stats_diag(model, val_loader, logger, epoch, cfg, meta):
             if i >= max_batches:
                 break
             inputs, target = model.prepare_input(batch)
-            out = model(**inputs)
+            out = dict(flatten(model(**inputs)))
             for k in keys:
                 if k in out:
                     data_by_key[k].append(out[k].detach().cpu())

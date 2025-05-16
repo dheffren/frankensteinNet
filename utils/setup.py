@@ -103,14 +103,7 @@ def build_hyp_scheduler(config):
     return SchedBundle(config.get("scheduler_hyp", {}))
 
 def build_dataloaders(config):
-    #TODO: Fix get_dataloaders, pick what parameters I want passed into this. Fix the path vs dataset name problem. 
-    #Should load the necessary things from config here rather than passing it further down. 
-    data_cfg = config["data"]
     return get_dataloaders(
-        #path = data_cfg["path"], 
-        #dataset_name=config["data"]["name"],
-        #batch_size=config["training"]["batch_size"],
-        #num_workers=config["data"].get("num_workers", 8), 
         config
     )
 class IdentityScheduler:

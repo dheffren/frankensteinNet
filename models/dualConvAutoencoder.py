@@ -258,7 +258,7 @@ class ConvolutionalEncoder(nn.Module):
         #right padding size to counteract kernel. 
         pad = math.floor((kernel_size - 1)/2)
 
-        self.convEncoder1 = nn.Sequential(
+        self.conv = nn.Sequential(
             #need to choose stride and kernel size so that the dimensions decrease accordingly. 
             nn.Conv2d(in_channels, out_channels, kernel_size , stride = 1, padding = pad), nn.ReLU(), 
             nn.MaxPool2d(kernel_size, stride = 2, padding = pad), 
@@ -278,7 +278,7 @@ class ConvolutionalEncoder(nn.Module):
         )
 
     def forward(self, x):
-        return self.convEncoder1(x)
+        return self.conv(x)
 class ConvolutionalDecoder(nn.Module):
     def __init__(self, in_channels = 3, out_channels = 8, kernel_size = 3, input_size = (256, 256)):
         super(ConvolutionalDecoder, self).__init__()
@@ -287,7 +287,7 @@ class ConvolutionalDecoder(nn.Module):
         #right padding size to counteract kernel. 
         pad = math.floor((kernel_size - 1)/2)
 
-        self.convDecoder1 = nn.Sequential(
+        self.conv = nn.Sequential(
             #had just a conv2d here before, maybe was a problem. 4/2
             nn.ConvTranspose2d(1, 4*out_channels, 1), 
             #the above is the extra to make 4x4
@@ -305,5 +305,5 @@ class ConvolutionalDecoder(nn.Module):
 
 
     def forward(self, x):
-        return self.convDecoder1(x)
+        return self.conv(x)
     

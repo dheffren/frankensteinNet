@@ -104,9 +104,10 @@ class Logger:
     def log_scalar(self, name, value, step):
         #if want to REMOVE dynamic addition - remove this if statement and the dictionary will raise a value error. 
         if name not in self.field_names:
+           
             self.field_names.append(name)
             #allow dynamically updating. 
-            self.csv_writer.fieldnames.append(name)
+            #self.csv_writer.fieldnames.append(name)
             self._rewrite_csv_header()
         #flush manually in the trainer loop. 
         self._current_metrics[name] = value
@@ -117,7 +118,7 @@ class Logger:
         row.update(self._current_metrics)
         #Note: This is only for dynamically adding fields/columns to CSV. it allows header to be udpated. 
         self._rows.append(row)
-
+        print("field names: ", self.field_names)
         #if i don't fill in all metrics, this throws an error, thinking it is a set. 
         # DictWriter will drop keys it hasn't seen yet, but because appended them above, it now knows them. 
         self.csv_writer.writerow(row)

@@ -141,9 +141,9 @@ def make_dual_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, A
 
         orth_loss_1 = orthLoss(latentu1, latentc1, latentuh1)
         orth_loss_2 = orthLoss(latentu2, latentc2, latentuh2)
-
+        #could also return hyperparameters here. 
         loss = lr1*recon_loss_1 + lr2*recon_loss_2 + lc*com_loss + lo1*orth_loss_1 + lo2*orth_loss_2
-        return {"loss": loss}
+        return {"loss": loss, "com_loss":com_loss, "orth_loss_1":orth_loss_1, "orth_loss_2":orth_loss_2, "recon_loss_1":recon_loss_1, "recon_loss_2":recon_loss_2}
 
     return _loss_fn
 

@@ -7,7 +7,7 @@ def jac_field_fn(cfg:dict):
     suffixes = cfg.get("jacobian_norm_diag_suffixes", ["fro"])
     print(pairs)
     return [f"{p['of']}_wrt_{p['wrt']}/{suff}" for p in pairs for suff in suffixes]
-    
+#TODO: Automatic field naming isn't working here - using dynamic. It works for now, but not intended. I think maybe ALL field naming being dynamic would be better. 
 @register_diagnostic(name = "jacobian_norm_diag", field_fn = jac_field_fn)
 def jacobian_norm_diag(model, dataloader, logger, epoch, config, meta):
     #TODO: Fix this so the things it's "calling" are in this file insetad of in that suffix file. 
@@ -71,7 +71,7 @@ def jacobian_norm_diag(model, dataloader, logger, epoch, config, meta):
                         #print("inside")
                         outputDict[f"{key}/{suffix}"] = 0
                     outputDict[f"{key}/{suffix}"] +=val
-                    print("here")
+                    #print("here")
                 except Exception as e:
                     print(f"[JacobianDiag] Failed for {pair}/{suffix}: {e}")
     for keyv in outputDict.keys():

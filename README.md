@@ -69,5 +69,10 @@
     This is where diagnostics are saved. 
     The logger contains ways of saving the plot and sany scalars you might want to keep. There's a whole fiasco about dynamic vs static naming. 
 
+    Diagnostics are a very important thing in the current setup - they update automatically based on what's in the diagnostics/ folder, so you don't have to manually specify them. 
+
+    However, currently they require a bit of work on the "naming" convention and getting them set up in their own file, and the relation with the csv in logger. 
+
+    
 
 

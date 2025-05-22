@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.9"
-# dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas", "seaborn"]
+# dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas", "seaborn", "wandb"]
 # ///
 import yaml
 from utils.setup import build_model, build_optimizer, build_scheduler, build_dataloaders, build_hyp_scheduler, setup_experiment

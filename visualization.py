@@ -12,7 +12,7 @@ def make_reconstruction_plot(x, x_recon, epoch, num_images=8, meta = None):
         #hopefully this is pass by instance. 
         plot_tensor(axs[0,i], x[i])
         axs[0, i].axis('off')
-        plot_tensor(axs[1, i], x_recon[i])
+        plot_tensor(axs[1, i], roundOutput(x_recon[i]))
         axs[1, i].axis('off')
 
     axs[0, 0].set_ylabel("Original", fontsize=12)
@@ -34,11 +34,11 @@ def make_dual_reconstsruction_plot(x1,x1_recon, x2, x2_recon, epoch, num_images=
         #hopefully this is pass by instance. 
         plot_tensor(axs[0,i], x1[i])
         axs[0, i].axis('off')
-        plot_tensor(axs[1, i], x1_recon[i])
+        plot_tensor(axs[1, i], roundOutput(x1_recon[i]))
         axs[1, i].axis('off')
         plot_tensor(axs[2,i], x2[i])
         axs[2, i].axis('off')
-        plot_tensor(axs[3, i], x2_recon[i])
+        plot_tensor(axs[3, i], roundOutput(x2_recon[i]))
         axs[3, i].axis('off')
 
     axs[0, 0].set_ylabel("Original X1", fontsize=12)
@@ -48,6 +48,11 @@ def make_dual_reconstsruction_plot(x1,x1_recon, x2, x2_recon, epoch, num_images=
     fig.suptitle(f"Reconstructions — Epoch {epoch}")
     plt.tight_layout()
     return fig
+def roundOutput(array, lowerBound = 0, upperBound = 1):
+    #want negative parts to go to 0, above 1 to go to 1
+    array = array - array*(array<lowerBound)
+    array = array -(array - upperBound)*(array>upperBound)
+    return array
 def renormalize_data(x):
     #assume data in -1, 1 range. Not sure if RIGHT but assume lol. 
 

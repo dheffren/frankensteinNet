@@ -31,7 +31,12 @@ def mse_loss(x: torch.Tensor, x_hat: torch.Tensor) -> torch.Tensor:
     #deal with shape mismatches here? TODO: Check to make sure this is doing the right thing. 
     """Mean‑squared error with mean reduction."""
     return F.mse_loss(x_hat, x, reduction="mean")
-
+def relative_mse_loss(x: torch.Tensor, x_hat: torch.Tensor, eps = 1e-8) -> torch.Tensor:
+    x = x.view(x.shape[0], -1)
+    x_hat = x_hat.view(x_hat.shape[0], -1)
+    L2dist = torch.sum((x - x_hat)**2, dim = -1)
+    normalized = L2dist/ (torch.sum(x**2, dim=-1) + eps)
+    return torch.mean(normalized)
 
 def bce_loss(x: torch.Tensor, x_hat: torch.Tensor) -> torch.Tensor:
     """Binary‑cross‑entropy (pixel‑wise). Expects x to be in [0,1]."""
@@ -120,8 +125,8 @@ def make_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], 
 def make_dual_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], Dict[str, torch.Tensor]]:
     if extra:
         warnings.warn(f"[make_ae_loss] Unused keys in loss config: {list(extra.keys())}")
-    recon_fn = mse_loss if recon_type == "mse" else bce_loss
-    common_fn = mse_loss
+    recon_fn = relative_mse_loss if recon_type == "mse" else bce_loss
+    common_fn = relative_mse_loss
     def _loss_fn(out, targets, lr1, lr2, lc, lo1, lo2):
      
         x1 = targets["recon_target"]["x1"]

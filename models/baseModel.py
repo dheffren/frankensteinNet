@@ -6,4 +6,7 @@ class BaseModel(nn.Module):
         return
     
 
-    def compute_loss(self, batch, epoch)
+    def compute_loss(self, batch, epoch):
+        inputs, targets = self.prepare_input(batch)
+        out = self(**inputs)
+        

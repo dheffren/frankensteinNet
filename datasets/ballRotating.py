@@ -164,8 +164,10 @@ def circular_motion(center, radius, angle_deg):
 # 2. Generate a single frame given angles
 def generate_frame(angle_common1, angle_common2, angle_private1, angle_private2, img_size=256):
     # Create blank images
-    img1 = Image.new('RGB', (img_size, img_size), (0,0,0))
-    img2 = Image.new('RGB', (img_size, img_size), (0,0,0))
+    colorWhite = (255, 255, 255)
+    colorBlack = (0,0,0)
+    img1 = Image.new('RGB', (img_size, img_size), colorWhite)
+    img2 = Image.new('RGB', (img_size, img_size), colorWhite)
     draw1 = ImageDraw.Draw(img1)
     draw2 = ImageDraw.Draw(img2)
 

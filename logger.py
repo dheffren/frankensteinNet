@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from diagnostics import get_diagnostics, get_fields
 from pathlib import Path
+
+import inspect
 import yaml
 import sys
 try:
@@ -65,17 +67,30 @@ class Logger:
         print(self.field_names)
         self._rows = []
         self._init_csv_logger()
+        
         #saves standard output and error. 
         redirect_stdout_stderr(self.run_dir)
-  
+
         if self.use_wandb:
+            set_wandb_api_key_from_file()
             wandb.init(project=self.project,
                        name=self.run_name,
-                       config=config)
-                       
+                       config=config, settings =wandb.Settings( _disable_stats=True, _disable_meta=True))
+            self._original_log = wandb.log
+            #wandb.log = self.debug_log
+    def debug_log(self,*args, **kwargs):
+        step = kwargs.get("step", "<auto>")
+        print(f"[WandB LOG] step={step}, keys={list(args[0].keys()) if args else '??'}")
+        
+        # Print caller info
+        stack = inspect.stack()
+        print(f"  Called from: {stack[1].filename}:{stack[1].lineno}")
+
+        return self._original_log(*args, **kwargs)     
     def _collect_all_fieldnames(self, config):
         #TODO: this works really well, but the last thing I need to check is if we dynamically add something at a DIFFERENT epoch than 0 - does it rewrite the whole file correctly. 
-        field_names = ["step", "train/loss", "val/loss", "lr"]
+        #field anmes are out of date. 
+        field_names = ["train/loss/loss", "val/loss/loss"]
         active_diags = config.get("diagnostics", [])
         field_registry = get_fields()
       
@@ -118,7 +133,7 @@ class Logger:
         row.update(self._current_metrics)
         #Note: This is only for dynamically adding fields/columns to CSV. it allows header to be udpated. 
         self._rows.append(row)
-        print("field names: ", self.field_names)
+ 
         #if i don't fill in all metrics, this throws an error, thinking it is a set. 
         # DictWriter will drop keys it hasn't seen yet, but because appended them above, it now knows them. 
         self.csv_writer.writerow(row)
@@ -149,7 +164,7 @@ class Logger:
         self.csv_writer.writeheader()
         for row in self._rows:
             self.csv_writer.writerow(row)
-    def save_plot(self, fig, name):
+    def save_plot(self, fig, name, step):
         # in the plots subfolder. 
         plot_path = self.run_dir / "plots"
         plot_path.mkdir(parents=True, exist_ok = True)
@@ -158,8 +173,9 @@ class Logger:
         os.makedirs(os.path.dirname(path), exist_ok = True)
         fig.savefig(path)
         plt.close(fig)
+      
         if self.use_wandb:
-            wandb.log({name: wandb.Image(path)})
+            wandb.log({name: wandb.Image(str(path) )}, step = step)
 
     def save_checkpoint(self, model, epoch):
         check_path = self.run_dir / "checkpoints"
@@ -167,8 +183,13 @@ class Logger:
         
         path = check_path/f"model_epoch_{epoch}.pt"
         torch.save(model.state_dict(), path)
+        print("another")
         if self.use_wandb:
-            wandb.save(path)
+            #wandb.save(path)
+            artifact = wandb.Artifact(name = "model", type = "checkpoint")
+            artifact.add_file(path)
+            wandb.log_artifact(artifact, aliases = [f"epoch_{epoch}"])
+
     def save_artifact(self, array, name):
         path_arr = self.run_dir / "artifacts" 
         
@@ -180,15 +201,34 @@ class Logger:
         os.makedirs(os.path.dirname(path), exist_ok = True)
         np.save(path, array)
         if self.use_wandb:
-            wandb.save(path)
+            #wandb.save(path)
+            artifact = wandb.Artifact(name = name.replace("/", "_"), type = "artifact")
+            artifact.add_file(path)
+            #no aliases rn
+            wandb.log_artifact(artifact)
+
 
     def save_array(self, array, name):
         path = self.run_dir / f"{name}.npy"
         np.save(path, array)
         if self.use_wandb:
-            wandb.save(path)
+            #wandb.save(path)
+            artifact = wandb.Artifact(name = name.replace("/", "_"), type = "artifact")
+            artifact.add_file(path)
+            wandb.log_artifact(artifact)
 
     def close(self):
         self.csv_file.close()
         if self.use_wandb:
             wandb.finish()
+def set_wandb_api_key_from_file(filepath="api.txt"):
+    try:
+        with open(filepath, "r") as f:
+            api_key = f.read().strip()
+            if not api_key:
+                raise ValueError("WandB API key file is empty.")
+            os.environ["WANDB_API_KEY"] = api_key
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Could not find WandB API key file at: {filepath}")
+    except Exception as e:
+        raise RuntimeError(f"Error reading WandB API key: {e}")

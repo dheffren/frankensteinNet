@@ -128,17 +128,17 @@ class ConvolutionalAutoencoder(nn.Module):
         return x_recon, v
     
     def forward(self, x1, x2):
-        print(f"x1 shape: {x1.shape}")
-        print(f"x2 shape: {x2.shape}")
+        #print(f"x1 shape: {x1.shape}")
+        #print(f"x2 shape: {x2.shape}")
         #NOTE: When Have those extra layers but take a gradient skipping over those, weird things happen. 
         uh1 = self.convEncoder1(x1)  # Encode S1 (Rotations)
         
-        print(f"uh1 shape: {uh1.shape}")
+        #print(f"uh1 shape: {uh1.shape}")
         uh2 = self.convEncoder2(x2)
         if self.track_grad:
             uh1.requires_grad_(True)
             uh2.requires_grad_(True)
-        print(f"uh2 shape: {uh2.shape}")
+        #print(f"uh2 shape: {uh2.shape}")
         #print(uh1.shape)
         #print(uh2.shape)
  
@@ -187,7 +187,8 @@ class ConvolutionalAutoencoder(nn.Module):
         #Check if this is robust. 
         #I'm like 90% sure this does what I want it to do. Maybe I should pass in dict instead? 
         return self.loss_fn(out, targets,**self.hyp_sched.get_all(epoch))
-        
+    def compute_loss_helper(self, out, targets, epoch):
+        return self.loss_fn(out, targets,**self.hyp_sched.get_all(epoch))
     def prepare_input(self, batch, requires_grad = False):
         if isinstance(batch, torch.Tensor):
             #shouldn't we return x as an aux as well. 

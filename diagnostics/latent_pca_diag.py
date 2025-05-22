@@ -46,7 +46,7 @@ def layer_pca(model, val_loader, logger, epoch, cfg, meta):
     }
     
     for layer in layers: 
-        print("layer: ", layer)
+       
         output_dict = layer_pca_helper(model, val_loader, logger, epoch, layer, n_components, max_batches, do_plot, meta)
         outputDict.update(output_dict)
         
@@ -96,18 +96,18 @@ def layer_pca_helper(model, val_loader,logger, epoch, layer, n_components, max_b
         outputDict[f"{layer}/pc_mean/{i}"] = np.mean(pc)
         outputDict[f"{layer}/pc_std/{i}"] = np.std(pc)
     #save the weights and the components. 
-    
+    print("this one")
     logger.save_artifact(latent_dim_weights, f"{layer}/weights/weights_epoch_{epoch}")
     logger.save_artifact(components, f"{layer}/components/components_epoch_{epoch}")
     fig = plot_pca_scree(n_components, explained_variance, cum_var, layer)
-    logger.save_plot(fig, f"{layer}/scree/scree_epoch_{epoch}")
+    logger.save_plot(fig, f"{layer}/scree/scree_epoch_{epoch}.png", epoch)
     fig = plot_pca_component(n_components, latent_dim_weights)
-    logger.save_plot(fig, f"{layer}/basis/basis_epoch_{epoch}")
+    logger.save_plot(fig, f"{layer}/basis/basis_epoch_{epoch}.png", epoch)
 
     if do_plot and n_components >= 2:
         fig = plot_pca_2d_scatter(components, all_labels, layer)
-        logger.save_plot(fig, f"{layer}/pca_scatter_2d/pca_scatter_2d_epoch_{epoch}")
+        logger.save_plot(fig, f"{layer}/pca_scatter_2d/pca_scatter_2d_epoch_{epoch}.png", epoch)
     if do_plot and n_components>=3:
         fig = plot_pca_3d_scatter(components, all_labels, layer)
-        logger.save_plot(fig, f"{layer}/pca_scatter_3d/pca_scatter_3d_epoch_{epoch}")
+        logger.save_plot(fig, f"{layer}/pca_scatter_3d/pca_scatter_3d_epoch_{epoch}.png", epoch)
     return outputDict

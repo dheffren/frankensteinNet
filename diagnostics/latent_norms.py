@@ -1,9 +1,9 @@
 import torch
-from utils.flatten import flatten
+
 from .registry import register_diagnostic
-from utils.fixedBatch import get_fixed_batch
-@register_diagnostic() 
-def latent_norms(model, val_loader, logger, epoch, cfg, meta):
+from .helper import * 
+@register_diagnostic("latent_norms") 
+def latent_norms(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     """
     Computes PCA over the latent vectors in the model output and logs explained variance ratios.
     Optionally logs a 2D PCA scatter plot.
@@ -27,25 +27,14 @@ def latent_norms(model, val_loader, logger, epoch, cfg, meta):
     
     outputDict = {
     }
-    for layer in layers: 
-        output_dict = latent_norms_helper(model, val_loader, logger, epoch, layer,  num_latents, meta,  seed, save_latents = save_latents)
+    for layer in layers:
+        latents, _ = compute_latent_batch(model, val_loader, layer, seed, num_latents)
+        if save_latents: 
+            logger.save_artifact(latents.detach().cpu().numpy(), f"{layer}/embed_epoch_{epoch}")
+        norms = latents.norm(dim=1)
+        output_dict = {f"{layer}/norm_mean": norms.mean().item(),
+        f"{layer}/norm_std": norms.std().item(),
+        f"{layer}/norm_max": norms.max().item()}
         outputDict.update(output_dict)
         
     return outputDict
-def latent_norms_helper(model, val_loader, logger, epoch, layer, num_latents, meta, seed, save_latents = False):
-    latents = []
-    labels = []
-    with torch.no_grad():
-        #supposedly this gives a fixed subset. 
-        batch = get_fixed_batch(val_loader, seed, num_samples= num_latents)
-        inputs, target = model.prepare_input(batch)
-        out = dict(flatten(model(**inputs)))
-        latents = out[layer]
-
-    if save_latents: 
-        logger.save_artifact(latents.detach().cpu().numpy(), f"{layer}/embed_epoch_{epoch}")
-    norms = latents.norm(dim=1)
-    return {f"{layer}/norm_mean": norms.mean().item(),
-        f"{layer}/norm_std": norms.std().item(),
-        f"{layer}/norm_max": norms.max().item()}
-

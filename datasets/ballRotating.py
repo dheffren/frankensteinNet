@@ -13,6 +13,7 @@ class BallRotatingDataset(torch.utils.data.Dataset):
     #TODO: I have a feeling the root should just be "data/" to be consistent with MNIST, then it should add its own name here. 
     def __init__(self, root = "data/ballRotating", train=True, transform = None, BW = False, img_size= 128, amount = 2000):
         self.train = train
+        
         self.transform = transform
         self.root = Path(root)
         self.BW = BW
@@ -40,7 +41,7 @@ class BallRotatingDataset(torch.utils.data.Dataset):
         #return data as a dict. 
         element = {"x1": x1, "x2":x2}
         #includes normalization. 
-       
+
         if self.transform:
       
             transformedEle = self.transform(element)

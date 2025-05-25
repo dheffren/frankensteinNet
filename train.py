@@ -3,7 +3,9 @@ import torch
 import contextlib
 from  diagnostics.registry import get_diagnostics
 import time
+from hookManager import HookManager
 from collections import defaultdict
+
 class Trainer:
     """
     Trainer Class - orchestrate training
@@ -12,7 +14,7 @@ class Trainer:
 
     Specify model, optimizer, dataset and diagnostics outside of the trainer class.  
     """
-    def __init__(self, model, optimizer, scheduler, dataloaders, logger, meta, config):
+    def __init__(self, model, optimizer, scheduler, dataloaders, logger, hook_manager,meta, config):
         self.model = model
         self.train_loader, self.val_loader = dataloaders["train"], dataloaders["val"]
         self.logger = logger
@@ -21,10 +23,15 @@ class Trainer:
         self.meta = meta
         self.global_step = 0
         self.config = config
+        self.hook_manager = hook_manager
+
         return 
+    
+
     def train(self):
         #PLACEHOLDER
         self.model.train()
+        self.prerun_diagnostics()
         print("cudnn benchmark is enabled:", torch.backends.cudnn.benchmark) 
         torch.backends.cudnn.benchmark = True
         for epoch in range(self.config["training"]["epochs"]):
@@ -38,30 +45,25 @@ class Trainer:
             #update scheduler - if no scheduler, should still work as a constant. 
             self.scheduler.step() #-- if want to update lr in the middle of epoch, will have to do in train epoch. 
             # log things we care about. 
-            #TODO: Maybe make a separate one for each of validation and train loss, and grad norm. Shouldn't this just be avg tho? 
-            if epoch % self.config["training"]["log_interval"] ==0:
-                for name, dict in return_dict_train.items():
-                    for k,v in dict.items():
-                        #print("v: ", v)
-                        self.logger.log_scalar(f"train/{name}/{k}", v, epoch)
-                for name, dict in return_dict_val.items():
-                    for k, v in dict.items():
-                        self.logger.log_scalar(f"val/{name}/{k}", v, epoch)
-            #log the current learning rate: OPTIONAL. 
-            if self.config["scheduler"]["log"]:
-                self.logger.log_scalar("lr", self.optimizer.param_groups[0]["lr"], epoch)
-            #save checkpoints here. And log anything else we want. 
-            if epoch % self.config["training"]["diagnostic_interval"] == 0:
-                if self.config["training"]["save_checkpoints"]:
-                    self.logger.save_checkpoint(self.model, epoch)
-                # log model state or latent space here. 
-                self.run_diagnostics(epoch) #with grad"
+            self.hook_manager.call(trigger_point = epoch, trigger = "epoch", 
+                                   step = self.global_step, 
+                                   model = self.model, 
+                                   logger = self.logger, 
+                                   val_loader = self.val_loader, 
+                                   epoch = epoch, 
+                                   cfg = self.config, 
+                                   meta = self.meta, 
+                                   train_metrics = return_dict_train, 
+                                   val_metrics = return_dict_val, 
+                                   step_type = "epoch", 
+                                   lr = self.optimizer.param_groups[0]["lr"]
+                                   )
             #logging per epoch - done manually here. 
-            self.logger.flush(epoch)
+            self.logger.flush(self.global_step)
         
     def train_epoch(self, epoch, step_log = False):
         self.model.train()
-        avg_batch_time = 0
+
         dict_dict = {"loss": {}, "grad_norm":{}, "weight_norm":{}, "time": {}}
         val_dict = {"loss": {}, "grad_norm":{}, "weight_norm":{}, "time": {}}
         step_count = 0
@@ -83,7 +85,7 @@ class Trainer:
             self.optimizer.step()
             end = time.time()
             val_dict["time"] = {"time": end-start}
-            dict_dict = self.track_vals(dict_dict, val_dict, step_log)
+            dict_dict = self.track_vals(dict_dict, val_dict, epoch, step_log)
             #what on earth is this? - total number of optimizer steps. 
             self.global_step += 1
             step_count+=1
@@ -91,7 +93,7 @@ class Trainer:
         dict_dict = {name: {k: v/step_count for k,v in dict.items()} for name, dict in dict_dict.items()}
       
         return dict_dict
-    def track_vals(self, dict_dict, val_dict, step_log = False):
+    def track_vals(self, dict_dict, val_dict, epoch, step_log = False):
         #val list should be same length as dict_dict? Or not. 
         for name, dict in val_dict.items():
             #now looking at a specific val dict
@@ -101,10 +103,22 @@ class Trainer:
                 if name is "loss": 
                     v = v.item()
                 dict_dict[name][k] += v
-                if step_log: 
-                    #maybe track metrics additionally. 
-                    self.logger.log_scalar(f"train_step/{name}/{k}", v.item(), self.global_step)
-        #TODO: Returning from here "rounds off" values in a way i don't like. 
+                   
+        #TODO: Returning from here "rounds off" values in a way i don't like.
+        # Extra stuff here - but i don't really have anything.  
+        if step_log and hasattr(self, "hook_manager"):
+            self.hook_manager.call(
+                trigger_point = self.global_step,
+                trigger="step",
+                step=self.global_step,
+                model=self.model,
+                logger=self.logger,
+                epoch=epoch,
+                train_metrics=val_dict,
+                step_type = "step", 
+                config=self.config,
+                meta=self.meta
+            )
         return dict_dict
     def evaluate(self, epoch, use_gradients = False, step_log= False):
         #maybe only include jacobian terms in training not validation. 
@@ -129,8 +143,19 @@ class Trainer:
                     if k not in avg_loss_dict.keys():
                         avg_loss_dict[k] = 0
                     avg_loss_dict[k] += v.item()
-                    if step_log:
-                        self.logger.log_scalar(f"val_step/{k}", v.item(), self.global_step)
+                if step_log and hasattr(self, "hook_manager"):
+                    self.hook_manager.call(
+                    trigger_point = self.global_step,
+                    trigger="step",
+                    step=self.global_step,
+                    model=self.model,
+                    logger=self.logger,
+                    epoch=epoch,
+                    val_metrics={"loss": loss_dict},
+                    step_type = "step", 
+                    config=self.config,
+                    meta=self.meta
+                )
                 #should I do this? 
                 self.global_step+=1
                 step_count+=1
@@ -198,28 +223,17 @@ class Trainer:
             for layer, norm_sq_list in layer_norms.items():
                 norms[layer] = sum(norm_sq_list)**.5
         return norms
-    def run_diagnostics(self, epoch):
-        #runs the diagnostic functions in the diagnostic registry, allows us to not have to specify them here. 
-        #specified in config file. 
-        diagnostics_to_run = self.config.get("diagnostics", [])
-        registry = get_diagnostics()
-        #in the diagnostic function, log via log_scalar. 
-        for name in diagnostics_to_run:
-            fn = registry.get(name)
-            if fn is None:
-                print(f"[Diagnostics] Warning: diagnostic '{name}' not found in registry.")
-                continue
-
-            try:
-                print(f"[Diagnostics] {name}")
-                t0 = time.time()
-                
-                outputs = fn(self.model, self.val_loader, self.logger, epoch, self.config, self.meta) or {}
-                #log diagnostic scalars here instead. 
-                for field, value in outputs.items():
-                    self.logger.log_scalar(f"{name}/{field}", value, epoch)
-                print(f"[Diagnostics] {name} finished in {time.time() - t0:.2f}s")
-            except Exception as e:
-                print(f"[Diagnostics] {name} failed: {e}")
-
    
+
+    def prerun_diagnostics(self):
+        ### Run certain diagnostic things at the beginning of the run, both for tracking and other needs. 
+        #TODO: Make this more generalizable. 
+        diag_cfg = self.config["diagnostics_config"]
+        from diagnostics.helper import run_pca_analysis, compute_latent_all
+        layers = diag_cfg.get("layer_pca_layers", ["latent"])
+        max_batches = diag_cfg.get("max_batches", 120)#TODO: This may be a problem
+        n_components = diag_cfg.get("layer_pca_components", 5)
+        for layer in layers: 
+            latents, labels = compute_latent_all(self.model, self.val_loader, layer, max_batches)
+            projections, outputDict = run_pca_analysis(latents, labels, f"{layer}", self.logger, -1, n_components, None, None, False, self.meta)
+            #if want to plot this stuff at the beginning of epoch. , can also do the prerun hooks. 

@@ -1,5 +1,3 @@
-from models.autoencoder import Autoencoder
-from models.dualConvAutoencoder import ConvolutionalAutoencoder
 from torch.optim import Adam
 from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
 from scheduler import ScalarSchedule, SchedBundle
@@ -13,7 +11,8 @@ import torch
 import torch.nn as nn
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
-
+from utils.setup_hooks import register_diagnostics_as_hooks, register_hooks_from_config
+from hookManager import HookManager
 @dataclass
 class ExperimentBundle:
     model: nn.Module
@@ -24,6 +23,7 @@ class ExperimentBundle:
     dataloaders: Dict[str, DataLoader]
     logger: Logger
     run_manager: RunManager
+    hook_manager: HookManager
     metadata: dict
 def setup_experiment(config) -> ExperimentBundle:
     device = config["device"]
@@ -33,13 +33,15 @@ def setup_experiment(config) -> ExperimentBundle:
     model = build_model(config, meta).to(device)
     optimizer = build_optimizer(model, config)
     scheduler = build_scheduler(optimizer, config)
-
+    hook_mgr = HookManager()
+    register_hooks_from_config(hook_mgr, config)
+    register_diagnostics_as_hooks(hook_mgr, config)
     #TODO: Deal with resume 
     run_manager = RunManager(config, "runs", False)
     #don't love this reference here. 
     #TODO: Pass the metadata into logger, and deal with hyperparameter schedule in logger
     logger = Logger(run_manager.run_dir, config, meta)
-    return ExperimentBundle(model, optimizer, scheduler, dataloaders, logger, run_manager, meta)
+    return ExperimentBundle(model, optimizer, scheduler, dataloaders, logger, run_manager, hook_mgr, meta)
 
 def build_model(config, metadata):
     #load the loss function from the config.loss function. 
@@ -49,21 +51,13 @@ def build_model(config, metadata):
     loss_fn = make_loss_fn(config["loss"])
     hyp_scheduler = build_hyp_scheduler(config)
     #TODO: What to do if don't input these things. 
-    if model_cfg["type"] == "Autoencoder":
-        model = Autoencoder
-    #ADD other model types here. 
-    elif model_cfg["type"] == "DualConvAutoencoder":
-        model = ConvolutionalAutoencoder
-    else:
-        raise ValueError(f"Unknown model type: {config['model']['type']}")
-    return model(model_cfg = model_cfg,
-            loss_fn = loss_fn, 
-            hyp_sched = hyp_scheduler, 
-            metadata = metadata, 
-            device = config["device"],
-            )
-def build_optimizer(model, config):
+    from models.registry import get_registered_model
+    modelType = get_registered_model(model_cfg["type"])
+    print(modelType)
+    return modelType(model_cfg, loss_fn, hyp_scheduler, metadata, device = config["device"])
 
+def build_optimizer(model, config):
+    #TODO: Make registry. 
     opt_cfg = config["optimizer"]
     if opt_cfg["type"] == "Adam":
         return Adam(
@@ -77,6 +71,7 @@ def build_optimizer(model, config):
         raise ValueError(f"Unknown optimizer type: {config['optimizer']['type']}")
     
 def build_scheduler(optimizer, config):
+    #TODO: Make registry. 
     #it's ok to not have a scheduler specified. 
     sched_cfg = config.get("scheduler", {})
     #if no schduler return true. If scheduler but not enabled return true. if scheduler and enabled return false. 

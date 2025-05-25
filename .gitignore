@@ -3,3 +3,4 @@ raw/
 data/
 .sweep_tmp/
 api.txt
+wandb/

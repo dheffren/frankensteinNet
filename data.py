@@ -38,6 +38,7 @@ def prepare_dataset(cfgD): #config["data"]
     path = cfgD["path"]
     try: 
         stats = load_normalization_stats(path) #won't return empty dictionary - may return empty dict values. 
+   
         validate_normalization_stats(stats, cfgD)
     except (FileNotFoundError, ValueError, TypeError) as e:
         print(f"[INFO] Invalid or missing normalization info: {e}")
@@ -61,20 +62,23 @@ def validate_normalization_stats(stats:dict, cfgD:dict):
     #TODO: Should logic for transform keys instead come from the data itself? Ie from where we convert the data via dictionary. 
     transform_keys = cfgD["transforms"].keys() #list of ALL transform keys - not just those with normalization. 
     for key in transform_keys:
+ 
         if "Normalize" not in cfgD["transforms"][key]: continue # Check if normalize is in the list of transforms for that given key.  
         if key not in stats["mean"] or key not in stats["std"]: #throw error, this shouldn't happen if file is correct. 
             raise ValueError(f"Missing mean/std for key '{key}' in metadata.")
         mean = stats["mean"][key]
         std  = stats["std"][key]
+       
         if not isinstance(mean, list) or not isinstance(std, list):
             raise TypeError(f"Mean/std for '{key}' should be lists, got {type(mean)} / {type(std)}")
+   
         if len(mean) != len(std):
             raise ValueError(f"Mean/std for '{key}' must have same length: {mean} vs {std}")
+       
         #check value ranges. 
-        if not all(std>0): 
+        if not all([s> 0 for s in std]): 
             raise ValueError("Std at or below 0")
         #check shape matches with dataset. 
-
 
 def get_dataset(cfgD, train = True, transform = None): 
     dataset_name = cfgD["dataset"]

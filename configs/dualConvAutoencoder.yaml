@@ -5,7 +5,7 @@ seed: 234
 
 # ---------- Model ----------
 model:
-  type: DualConvAutoencoder
+  type: DualConvolutionalAutoencoder
   variant: beta
   input_dim: 784
   latent_dim: 64
@@ -16,19 +16,15 @@ model:
 training:
   epochs: 20 
   lr: .0001
-  batch_size: 64
-  weight_decay: 0.0
   grad_clip: 1.0
   log_interval: 1             # log loss every N epochs
-  diagnostic_interval: 10     # run diagnostics every N epochs
+  diagnostic_interval: 5    # run diagnostics every N epochs
   save_checkpoints: true
 
 # ---------- Loss Weights ----------
 loss:
   type: dual_ae
   recon_type: mse
-  reconstruction_weight: 1.0
-  kl_weight: 0.1
   jacobian_penalty: 0.0       # optionally used during training
 
 # ---------- Optimizer / Scheduler ----------
@@ -53,21 +49,43 @@ data:
   dataset: ballRotating
   path: data/ballRotating #This should be data then the method itself saves in ball rotating. 
   val_split: 0.3
-  batch_size: 256
+  batch_size: 40
   shuffle: true
   num_workers: 8
   augment: false
   transforms: # make sure the transforms match transformRegistry in transformations.py. 
     #list input keys (should correspond to the dataset input keys). 
     "x1": [ "ToTensor", "Normalize",]
-    "x2": ["ToTensor"] # no normalize means it doesn't end up doing any normalization. This allows for NON images input as well.  
+    "x2": ["ToTensor", "Normalize"] # no normalize means it doesn't end up doing any normalization. This allows for NON images input as well.  
 # ---------- Diagnostics ----------
+hooks: 
+  - name: log_epoch
+    trigger: epoch
+    every: 1
+  - name: log_train_metrics
+    trigger: epoch
+    every: 1
+  - name: log_train_metrics
+    trigger: step
+    every: 1
+  - name: log_val_metrics
+    trigger: epoch
+    every: 1
+  - name: log_learning_rate
+    trigger: epoch
+    every: 1
+  - name: log_checkpoints
+    trigger: epoch
+    every: 10
+  
 diagnostics:
 #NOTE THESE MUST BE THE METHOD NAMES NOT THE FILE NAMES. 
   - tensor_stats_diag
   - layer_pca
   - log_reconstruction_plot
   - jacobian_norm_diag
+  - latent_norms
+  - global_pca
 diagnostics_config:
   tensor_stats_diag_keys: ["latent_uh1", "latent_uh2","latent_u1", "latent_u2", "latent_c1", "latent_c2", "recon_x1", "recon_x2", ]
   tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]
@@ -84,6 +102,8 @@ diagnostics_config:
 
   jacobian_norm_diag_suffixes: ["spectral", "jacfro"]
   layer_pca_layers: ["latent_uh1", "latent_uh2"]
+  save_latents: true
+  fixed_batch_seed: 234
 # ---------- Logging ----------
 logging:
   use_wandb: true

@@ -179,6 +179,35 @@ def analyze_weight_norms(metrics_csv_path, save_dir = None, show = False):
         plt.savefig(Path(save_dir) / "weight_norm_heatmap.png")
     if show:
         plt.show()
+def load_pca_projections_for_layer(layer_path):
+    latents = []
+    epochs = []
+    layer_path = layer_path + "/projectedExt"
+    default_name = "projected_epoch_"
+    files = sorted([
+        f for f in os.listdir(layer_path)
+        if f.startswith(default_name) and f.endswith(".npy")
+    ])
+    print(files)
+    for fname in files:
+        epoch_str = fname[len(default_name):-4]
+        try:
+            print('before this')
+            epoch = int(epoch_str)
+            print(epoch)
+        except ValueError:
+            continue  # Skip malformed filenames
+      
+        path = os.path.join(layer_path, fname)
+        print("got path: ", path)
+        z = np.load(path)  # shape = (num_samples, latent_dim)
+        print(z.shape)
+        print("loaded")
+        latents.append(z)
+        epochs.append(epoch)
+    latents_over_time = np.stack(latents, axis=0)
+    return latents_over_time, epochs
+
 def load_latent_trajectories_for_layer(layer_path):
     """
     Loads latent vectors from all embed_epoch_{epoch}.npy files inside a given layer directory.
@@ -208,6 +237,47 @@ def load_latent_trajectories_for_layer(layer_path):
 
     latents_over_time = np.stack(latents, axis=0)
     return latents_over_time, epochs
+def plot_adjusted_latent_trajectories(run_path, save_dir, show = False):
+    num_points = 10
+    artifact_root = run_path/"artifacts"
+    if not os.path.isdir(artifact_root):
+        raise FileNotFoundError(f"No 'artifacts' directory found in {run_path}")
+
+    layer_names = [
+        name for name in os.listdir(artifact_root)
+        if os.path.isdir(os.path.join(artifact_root, name))
+    ]
+
+    for layer in sorted(layer_names):
+        layer_path = os.path.join(artifact_root, layer)
+        print(f"\n📦 Analyzing layer: {layer}")
+        try:
+            latents, epochs = load_pca_projections_for_layer(layer_path)
+            print("middle")
+            plot_adjusted_latent_trajectoriesHelp(latents, epochs, layer_name=layer, num_points=num_points,save_dir = save_dir)
+        except Exception as e:
+            print(f"⚠️  Skipping layer {layer} due to error: {e}")
+def plot_adjusted_latent_trajectoriesHelp(latents, epochs, layer_name, num_points, save_dir):
+    num_epochs, num_samples, latent_dim = latents.shape
+    num_points = min(num_points, num_samples)
+    # Subset: first `num_points` samples
+    latents_subset = latents[:, :num_points, :]  # shape = (epochs, points, dim)
+    plt.figure(figsize=(10, 7))
+    for i in range(num_points):
+        traj = latents_subset[:, i, :]
+        #TODO: Fix colors
+        plt.scatter(traj[:, 0], traj[:, 1], alpha= .6)
+        plt.plot(traj[:, 0], traj[:, 1], alpha= .3)
+        #plt.scatter(traj[-1, 0], traj[-1, 1], s=10,)  # Mark end
+
+    plt.title(f"Adjusted latent trajectories for Layer: {layer_name}")
+    plt.xlabel("PC1")
+    plt.ylabel("PC2")
+    plt.grid(True)
+    plt.tight_layout()
+    if save_dir:
+        plt.savefig(Path(save_dir) / f"{layer_name}_adj_latent_trajectories.png")
+
 def plot_latent_trajectories(run_path, save_dir = None, show = False):
     num_points = 20
     artifact_root = run_path/"artifacts"
@@ -255,8 +325,8 @@ def plot_latent_trajectoriesHelp(latents_over_time, epochs, layer_name, num_poin
     plt.figure(figsize=(10, 7))
     for i in range(num_points):
         traj = reduced[:, i, :]
-        plt.plot(traj[:, 0], traj[:, 1], alpha=0.6)
-        plt.scatter(traj[-1, 0], traj[-1, 1], s=10, c='red')  # Mark end
+        plt.scatter(traj[:, 0], traj[:, 1], alpha=0.6)
+        #plt.scatter(traj[-1, 0], traj[-1, 1], s=10, c='red')  # Mark end
 
     plt.title(f"Latent Trajectories for Layer: {layer_name}")
     plt.xlabel("PC1")
@@ -266,27 +336,6 @@ def plot_latent_trajectoriesHelp(latents_over_time, epochs, layer_name, num_poin
     if save_dir:
         plt.savefig(Path(save_dir) / f"{layer_name}_latent_trajectories.png")
 
-def plot_latent_trajectory(metrics_path, save_dir = None, show = False):
-
-    #TODO: Write code to load the latent saved. Do the latents as batches. 
-     #Flatten across samples
-    all_latents = latents_over_time.reshape(-1, latents_over_time.shape[-1])
-    pca = PCA(n_components=2)
-    reduced = pca.fit_transform(all_latents)
-
-    num_epochs, num_samples, _ = latents_over_time.shape
-    reduced = reduced.reshape(num_epochs, num_samples, 2)
-
-    for i in range(num_samples):
-        traj = reduced[:, i, :]
-        plt.plot(traj[:, 0], traj[:, 1], alpha=0.5)
-        plt.scatter(traj[-1, 0], traj[-1, 1], c='red', s=10)  # final position
-
-    plt.title("Latent Trajectories Over Training")
-    plt.xlabel("PC1")
-    plt.ylabel("PC2")
-    plt.grid(True)
-    plt.show()
 
 def plot_latent_norms(metrics_path, save_dir = None, show = False):
     weight_df = get_method(metrics_path, "latent_norm", exclude = ".")
@@ -338,4 +387,5 @@ def plot_all_metrics(run_dir):
     analyze_weight_norms(metrics_path, save_dir = save_dir)
     plot_latent_norms(metrics_path, save_dir)
     plot_latent_trajectories(run_path, save_dir = save_dir)
+    plot_adjusted_latent_trajectories(run_path, save_dir)
     print(f"[Analyze] Plots saved to {run_path}")

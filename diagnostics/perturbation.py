@@ -3,7 +3,7 @@ from utils.flatten import flatten
 from .registry import register_diagnostic
 from utils.fixedBatch import get_fixed_batch
 @register_diagnostic() 
-def weight_perturb(model, val_loader, logger, epoch, cfg, meta):
+def weight_perturb(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     """
     Computes PCA over the latent vectors in the model output and logs explained variance ratios.
     Optionally logs a 2D PCA scatter plot.
@@ -57,9 +57,7 @@ def weight_perturb(model, val_loader, logger, epoch, cfg, meta):
             restore_weights(model, saved_weights)
     #heatmap = compute_loss_surface_heatmap(model, batch, directions[])
     return outputDict
-def get_directions(model, batch, direction_list):
-    #need a method to get a list of directions so i can do other stuff. 
-    return
+
 def get_direction(model, batch, direction, epoch):
     if direction == 'random': 
         #CHECK THE NORMS HERE. 

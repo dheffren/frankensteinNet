@@ -6,19 +6,19 @@ from .registry import register_diagnostic
 from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
 @register_diagnostic()
-def log_reconstruction_plot(model, dataloader, logger, epoch, config, meta):
+def log_reconstruction_plot(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     #reconstruction plot diagnostic. 
     model.eval()
     #maybe see if this should ahve a default or not? 
     #fixed this so it works with the new registry system. 
-    diag_cfg = config.get("diagnostics_config", {})
+    diag_cfg = cfg.get("diagnostics_config", {})
     num_images = diag_cfg.get("num_recon_samples", 8)
     seed = diag_cfg.get("fixed_batch_seed", 32)
     # Grab a batch of data
     #Note: Designed so this is agnostic to the type of data passed in. 
     #always takes first batch of validation (and same samples)
     with torch.no_grad():
-        batch = get_fixed_batch(dataloader, seed, num_samples= num_images)
+        batch = get_fixed_batch(val_loader, seed, num_samples= num_images)
         inputs, target = model.prepare_input(batch)
         out = model(**inputs)
     fig = handle_reconstructions(target, out,  epoch, num_images, meta)

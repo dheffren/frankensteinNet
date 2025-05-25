@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-
+from .registry import register_model
 #TODO: Finish implementing at least one model. 
+register_model("Autoencoder")
 class Autoencoder(nn.Module):
     def __init__(self, model_cfg, loss_fn, hyp_sched,  metadata, device = "cpu", track_grad = True):
         super().__init__()

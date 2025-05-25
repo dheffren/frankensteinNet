@@ -16,7 +16,8 @@ def register_diagnostic(name = None, field_fn = None):
 
 def get_diagnostics():
     return DIAG_REGISTRY
-
+def get_diagnostic(name):
+    return DIAG_REGISTRY[name]
 def get_fields():
     return DIAG_FIELDS
 def default_field_fn(diag_name):

@@ -76,3 +76,14 @@
     
 
 
+ ## Metrics we care about and how they're tracked. 
+    train losses - returned from loss function, saved as metric. Also have step tracking. 
+    val losses - same
+    weight norm - tracked during epoch, (not val) returned average. Also have step tracking. 
+    grad norm - same NOTE: Groupings weird and ahrd to visualize. Also have step tracking. 
+    Reconstruction visualizations - use diagnostics, save throughout (can do on SAME fixed batch) - want to save a beginning one as well. 
+
+    Latent space visualizations: 
+        PCA on latent space outputs - diagnostic. Done on whole val set. Components saved, plots saved. 
+        PCA on latent space trajectory - diagnostic. Save latents on fixed batch for each call, then do PCA at the end on the saved data. 
+        PCA on latent space trajectory 2 - diagnostic. Precompute PCA at the beginning, project all latents onto that PCA basis later.  

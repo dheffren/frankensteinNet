@@ -64,6 +64,7 @@ class Logger:
         self._last_step = None
         self.meta = meta
         self.field_names = self._collect_all_fieldnames(config)
+    
         print(self.field_names)
         self._rows = []
         self._init_csv_logger()
@@ -116,17 +117,21 @@ class Logger:
         self.csv_writer = csv.DictWriter(self.csv_file, fieldnames = self.field_names, extrasaction = "ignore") #the  ignore allows dyanamic row addition. 
         self.csv_writer.writeheader()
 
-    def log_scalar(self, name, value, step):
+    def log_scalar(self, name, value, step, step_type = "epoch"):
+        #only flush steps to wandb. 
+        if step_type == "step": 
+            print("LOG STEP")
+            self._flush_step(name, value, step)
+            return
         #if want to REMOVE dynamic addition - remove this if statement and the dictionary will raise a value error. 
         if name not in self.field_names:
-           
             self.field_names.append(name)
             #allow dynamically updating. 
-            #self.csv_writer.fieldnames.append(name)
             self._rewrite_csv_header()
         #flush manually in the trainer loop. 
         self._current_metrics[name] = value
         self._last_step = step
+        
         
     def _flush_metrics(self, step):
         row = {"step": step}
@@ -139,8 +144,11 @@ class Logger:
         self.csv_writer.writerow(row)
         self.csv_file.flush()
         if self.use_wandb:
+            print("logging epoch")
             wandb.log(row, step=step)
-
+    def _flush_step(self, name, value, step):
+        print("logging step: ", name)
+        wandb.log({name: value}, step = step)
     def flush(self, step=None):
         step = step or self._last_step
         if step is None: 
@@ -175,6 +183,7 @@ class Logger:
         plt.close(fig)
       
         if self.use_wandb:
+            print("logging: ", name)
             wandb.log({name: wandb.Image(str(path) )}, step = step)
 
     def save_checkpoint(self, model, epoch):
@@ -183,9 +192,10 @@ class Logger:
         
         path = check_path/f"model_epoch_{epoch}.pt"
         torch.save(model.state_dict(), path)
-        print("another")
+      
         if self.use_wandb:
-            #wandb.save(path)
+           
+
             artifact = wandb.Artifact(name = "model", type = "checkpoint")
             artifact.add_file(path)
             wandb.log_artifact(artifact, aliases = [f"epoch_{epoch}"])
@@ -202,6 +212,7 @@ class Logger:
         np.save(path, array)
         if self.use_wandb:
             #wandb.save(path)
+       
             artifact = wandb.Artifact(name = name.replace("/", "_"), type = "artifact")
             artifact.add_file(path)
             #no aliases rn
@@ -212,6 +223,7 @@ class Logger:
         path = self.run_dir / f"{name}.npy"
         np.save(path, array)
         if self.use_wandb:
+
             #wandb.save(path)
             artifact = wandb.Artifact(name = name.replace("/", "_"), type = "artifact")
             artifact.add_file(path)

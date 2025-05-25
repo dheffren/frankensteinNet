@@ -3,6 +3,7 @@ from .suffix_fn_registry import get_suffix_fn
 from .registry import register_diagnostic
 from utils.flatten import flatten, safe_keyname
 from utils.fixedBatch import get_fixed_batch
+from .helper import *
 def jac_field_fn(cfg:dict):
     pairs = cfg.get("jacobian_norm_diag_pairs", [])
     suffixes = cfg.get("jacobian_norm_diag_suffixes", ["fro"])
@@ -10,7 +11,7 @@ def jac_field_fn(cfg:dict):
     return [f"{p['of']}_wrt_{p['wrt']}/{suff}" for p in pairs for suff in suffixes]
 #TODO: Automatic field naming isn't working here - using dynamic. It works for now, but not intended. I think maybe ALL field naming being dynamic would be better. 
 @register_diagnostic(name = "jacobian_norm_diag", field_fn = jac_field_fn)
-def jacobian_norm_diag(model, dataloader, logger, epoch, config, meta):
+def jacobian_norm_diag(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     #TODO: Fix this so the things it's "calling" are in this file insetad of in that suffix file. 
     """
     Note: 
@@ -18,18 +19,18 @@ def jacobian_norm_diag(model, dataloader, logger, epoch, config, meta):
     Inputs for each. 
     TODO: Need to require gradients so this will work - more problems. 
     """
-    cfg = config.get("diagnostics_config", {})
+    dcfg = cfg.get("diagnostics_config", {})
 
-    pairs = cfg.get("jacobian_norm_diag_pairs", [])
-    suffixes = cfg.get("jacobian_norm_diag_suffixes", ["fro"])
-    max_batches = cfg.get("max_batches", 1)
-    seed = cfg.get("seed", 32)
-    num_latents = cfg.get("num_latents", 20)
+    pairs = dcfg.get("jacobian_norm_diag_pairs", [])
+    suffixes = dcfg.get("jacobian_norm_diag_suffixes", ["fro"])
+    max_batches = dcfg.get("max_batches", 1)
+    seed = dcfg.get("seed", 32)
+    num_latents = dcfg.get("num_latents", 20)
     model.eval()
 
     outputDict = {}
     
-    batch = get_fixed_batch(dataloader, seed, num_samples= num_latents)
+    batch = get_fixed_batch(val_loader, seed, num_samples= num_latents)
     inputs, targets = model.prepare_input(batch, requires_grad = True)
     targets = dict(flatten(targets))
     #how do I do this IN the model?

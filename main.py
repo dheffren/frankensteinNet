@@ -3,7 +3,7 @@
 # dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas", "seaborn", "wandb"]
 # ///
 import yaml
-from utils.setup import build_model, build_optimizer, build_scheduler, build_dataloaders, build_hyp_scheduler, setup_experiment
+from setup import build_model, build_optimizer, build_scheduler, build_dataloaders, build_hyp_scheduler, setup_experiment
 from train import Trainer
 from runManager import RunManager
 from logger import Logger
@@ -71,7 +71,7 @@ print(device)
 #Note: training data affects config. 
 bundle = setup_experiment(config)
 # Train
-trainer = Trainer(bundle.model, bundle.optimizer, bundle.scheduler, bundle.dataloaders, bundle.logger, bundle.metadata, config)
+trainer = Trainer(bundle.model, bundle.optimizer, bundle.scheduler, bundle.dataloaders, bundle.logger, bundle.hook_manager, bundle.metadata, config)
 trainer.train()
 
 # Plot figures and get summary stats. 

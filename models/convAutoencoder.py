@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import math
+from .registry import register_model
 
+@register_model("ConvolutionalAutoencoder")
 class ConvolutionalAutoencoder(nn.Module):
     def __init__(self, latent_dimU= 2, latent_dimV =2, latent_dimC = 2):
         super(ConvolutionalAutoencoder, self).__init__()

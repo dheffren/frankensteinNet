@@ -1,18 +1,21 @@
 import torch
 import torch.nn as nn
 import math
-
-class ConvolutionalAutoencoder(nn.Module):
+from .registry import register_model
+from .baseModel import BaseModel
+@register_model("DualConvolutionalAutoencoder")
+class DualConvolutionalAutoencoder(BaseModel):
     def __init__(self, model_cfg, loss_fn, hyp_sched,  metadata, device = "cpu", track_grad = True):
-        #what? 
-        super(ConvolutionalAutoencoder, self).__init__()
+        #set other hyperparameters
+       
+        super().__init__(model_cfg, loss_fn, hyp_sched, metadata, device, track_grad)
         #assuming iamge dim 256x256
 
         #get this from the dataset. 
         #TODO: Check if metadata is None what happens. 
         #if i call something.get what happens if object is none? 
         self.BW = metadata.get("BW", False) or False
-        print(self.BW)
+        
         #maybe these should be from the model config instead? 
         latent_dimU = metadata.get("latent_dimU", 2)
         latent_dimV = metadata.get("latent_dimV", 2)
@@ -27,10 +30,7 @@ class ConvolutionalAutoencoder(nn.Module):
         kernel_size = model_cfg.get("kernel_size", 3)
         indim = model_cfg.get("indim", 40)
         dedim = model_cfg.get("dedim", 40)
-        self.loss_fn = loss_fn
-        self.hyp_sched = hyp_sched
-        self.device = device
-        self.track_grad = track_grad
+        
 
         self.convEncoder1 = ConvolutionalEncoder(in_channels, out_channels, kernel_size, self.data_size[1:])
         self.convEncoder2= ConvolutionalEncoder(in_channels, out_channels, kernel_size, self.data_size[1:])
@@ -179,16 +179,7 @@ class ConvolutionalAutoencoder(nn.Module):
         "c2": c2}, 
         }
         return output_dict 
-    def compute_loss(self, batch, epoch):
-        
-        inputs, targets = self.prepare_input(batch)
-        out = self(**inputs)
-        #Update scheduled hyperparameters 
-        #Check if this is robust. 
-        #I'm like 90% sure this does what I want it to do. Maybe I should pass in dict instead? 
-        return self.loss_fn(out, targets,**self.hyp_sched.get_all(epoch))
-    def compute_loss_helper(self, out, targets, epoch):
-        return self.loss_fn(out, targets,**self.hyp_sched.get_all(epoch))
+
     def prepare_input(self, batch, requires_grad = False):
         if isinstance(batch, torch.Tensor):
             #shouldn't we return x as an aux as well. 

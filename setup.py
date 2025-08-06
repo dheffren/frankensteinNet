@@ -28,14 +28,13 @@ class ExperimentBundle:
 def setup_experiment(config) -> ExperimentBundle:
     device = config["device"]
     dataloaders, meta = build_dataloaders(config)
-
-    
     model = build_model(config, meta).to(device)
     optimizer = build_optimizer(model, config)
     scheduler = build_scheduler(optimizer, config)
     hook_mgr = HookManager()
     register_hooks_from_config(hook_mgr, config)
     register_diagnostics_as_hooks(hook_mgr, config)
+    print("got here")
     #TODO: Deal with resume 
     run_manager = RunManager(config, "runs", False)
     #don't love this reference here. 
@@ -45,7 +44,7 @@ def setup_experiment(config) -> ExperimentBundle:
 
 def build_model(config, metadata):
     #load the loss function from the config.loss function. 
-    #TODO: DO i want to return the loss function and hyp scheduler?
+    #TODO: DO i want to return the loss function and hyp scheduler? - No can access through model. 
     model_cfg = config["model"]
 
     loss_fn = make_loss_fn(config["loss"])
@@ -53,7 +52,7 @@ def build_model(config, metadata):
     #TODO: What to do if don't input these things. 
     from models.registry import get_registered_model
     modelType = get_registered_model(model_cfg["type"])
-    print(modelType)
+    
     return modelType(model_cfg, loss_fn, hyp_scheduler, metadata, device = config["device"])
 
 def build_optimizer(model, config):

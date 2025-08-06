@@ -68,8 +68,12 @@ hooks:
   - name: log_train_metrics
     trigger: step
     every: 1
+    
   - name: log_val_metrics
     trigger: epoch
+    every: 1
+  - name: log_val_metrics
+    trigger: step
     every: 1
   - name: log_learning_rate
     trigger: epoch
@@ -86,6 +90,7 @@ diagnostics:
   - jacobian_norm_diag
   - latent_norms
   - global_pca
+  - hessian
 diagnostics_config:
   tensor_stats_diag_keys: ["latent_uh1", "latent_uh2","latent_u1", "latent_u2", "latent_c1", "latent_c2", "recon_x1", "recon_x2", ]
   tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]

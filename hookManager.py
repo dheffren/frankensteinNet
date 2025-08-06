@@ -1,6 +1,8 @@
 class HookManager:
+    #TODO: Rework hook manager to not deal with "different epoch vs step vs begin" but instead just deal with steps. 
+    #can handle the details of whether it should be called and how in the should_run, no? Then we don't have to redo same metric for epoch and step and begin. 
     def __init__(self):
-        self.hooks = {"epoch": [], "step": []}
+        self.hooks = {"epoch": [], "step": [], "begin":[], "end":[]}
 
     def register(self, callback, trigger="epoch", every=1, condition=None, name = None):
         hook = Hook(name, callback, trigger, every, condition)
@@ -10,6 +12,9 @@ class HookManager:
         for hook in self.hooks[trigger]:
             if hook.should_run(trigger_point):
                 hook.callback(**kwargs)
+    def list_hooks(self, trigger):
+        for hook in self.hooks[trigger]:
+            print(f"Hook: {hook.get_name()}\n")
 class Hook:
     def __init__(self, name, callback, trigger="epoch", every=1, condition=None):
         self.name = name
@@ -22,3 +27,5 @@ class Hook:
         if self.condition:
             return self.condition(trigger_point)
         return trigger_point % self.every == 0
+    def get_name(self):
+        return self.name

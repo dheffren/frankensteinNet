@@ -1,10 +1,17 @@
 # General and Modular framework for training and Analyzing neural networks
 
+## How to run training or evaluation
+
+Main.py - Call ONE run of a model given a config file (called from sweep.py). If not called from sweeps, runs in runs/manualRuns. 
+Sweep.py - Runs a sweep based on sweep_configs, saves a config in .sweep_tmp. Runs in a separate folder (runs/sweeps)
+
+Manage.py - Delete and list runs. Doesn't work right now. Uses methods from RunManager. Supposed to allow to resume as well. 
+
 ## Structure
 
-    main - loads a base config file, sets the seed(thus sneed to specify run config somewhere), builds model, optimizer, scheduler, dataloaders, and loggers, then calls the trainer to train the model. 
+    main - loads a base config file, sets the seed(thus need to specify run config somewhere), calls setup_experiment (from setup.py) to build model, optimizer, scheduler, dataloaders, and loggers, then calls the trainer to train the model. 
 
-    train - contains Trainer class, which handles everything involving training, where the model, loss function, optimizer, and diagnostics are "abstracted away". 
+    train - contains Trainer class, which handles everything involving training, where the model, loss function, optimizer, and diagnostics are "abstracted away", as well as hooks. 
 
     logger - logs EVERYTHING we want to save throughout our runs, including plots metrics versions, seed config, hyperparameters and diagnostics. Integrates with wandb and should save stuff in a runs folder. 
 
@@ -27,6 +34,60 @@
     Analyze - methods which are supposed to do statistics on the logs of completed runs. 
 
     data - defines the data loaders - will depend on what structure the data has. 
+## Important Components
+### Models
+contained in models folder.
+
+They're automatically registered via @register_model
+They should inherit base model (to make sure methods are right). 
+### Data:
+datasets are described in the datasets folder. Loaded from data.py dataloaders calling, specified in config. 
+
+### Dataloaders
+Calls get_dataloaders in data.py. 
+Automatically loads data, makes transforms, and normalizes. 
+TODO: Do normalizers and stuff work? 
+Saves a normalization.yaml in data folder to remember the normalization info of the data for later.
+TODO: Think of other normalization methods. Check if all this makes sense. 
+
+### Losses
+passed into model via make_loss_function in losses. Can access later by get_loss on model. 
+
+
+### Hyperparameter Schedules
+passed into model via build_hyp_scheduler, which creates a SchedBundle. This is specified in the config, where there are blocks taking in these hyperparameters. 
+
+
+### Learning rate schedules
+For now, done in setup.py and passed to trainer. 
+TODO: Add registry to make automatic. 
+### Optimizers:
+For now, done in setup.py and passed to trainer. 
+TODO: Add registry to make automatic. 
+### Logging
+Keeps track of local metrics and other information. Also handles wandb. \
+TODO: There is an error here. 
+Furthermore, need to figure out the dynamic stuff versus regular. 
+### Hooks
+Calls a hookmanager every epoch. 
+Hooks are basically things which are called repeatedly like metrics and diagnostics. 
+TODO: Integrate well with everything else, make sure it makes sense. 
+### Diagnostics
+The most important thing for interpretability. These are methods which keep track of different numbers, descriptors and details about the model and the training. Very complicated. 
+
+TODO: Clean this up nicely, integrate with hooks, make uniform. 
+
+There's also a "prerun_diagnostics" method which runs before any model training has occured. 
+### analysis
+Methods run on the diagnostics and saved information after the run. Also very important. 
+
+### Visualizations
+Designed to visualize a lot of the diagnostic data. Very important. Make sure it works. 
+
+
+### Features to Add
+Changed recently from purely considering diagnostics, to hooks - need to integrate the two formats nicely. 
+## Diagnostic/Hook list
 
 
 
@@ -47,10 +108,8 @@
 
 ## Outline of Program run Order
     Command Line Functions: 
-    Main.py - Call ONE run of a model given a config file (called from sweep.py). If not called from sweeps, runs in runs/manualRuns. 
-    Sweep.py - Runs a sweep based on sweep_configs, saves a config in .sweep_tmp. Runs in a separate folder (runs/sweeps)
-    Manage.py - Delete and list runs. Doesn't work right now. Uses methods from RunManager. Supposed to allow to resume as well. 
 
+   
     Now, let's go into the loop for main.py
     setup.py contains the "building" of the model, dataset, optimizers and schedulers based on the config. 
     data.py constructs the dataset from datasets folder - these datasets are AUTOMATICALLY "registered' based on name. All you need to do is just make a new dataset class in datasets/*, and pass in its name in the config. 

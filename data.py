@@ -53,7 +53,7 @@ def prepare_dataset(cfgD): #config["data"]
         #TODO: I think this is BACKWARD. - the alt one is backwards. Check if other one works. 
         keys = [k for k, tlist in cfgD["transforms"].items() if "Normalize" in tlist]
         stats = compute_mean_std_for_keys(stat_loader, keys = keys)
-        print(stats)
+        #print(stats)
         #save mean and std to disk. 
         save_normalization_stats(stats,  path)
     #after this - know it works. Thus, can proceed normally
@@ -137,7 +137,7 @@ def compute_mean_std_for_keys(loader, keys, eps = 1e-6):
         means[k] = mean.tolist()
         stds[k]  = std.tolist()
     stats = {"mean": means, "std": stds}
-    print("stats: ", stats)
+    #print("stats: ", stats)
     return stats
 def compute_mean_std_for_keysAlt(loader, keys):
     #TODO: THIS IS THE WRONG WAY. INSIDE AND OUTSIDE KEYS REVERSED. 

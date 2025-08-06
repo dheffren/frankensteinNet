@@ -53,6 +53,7 @@ class Logger:
     """
     def __init__(self, run_dir, config, meta, use_wandb = True):
         self.use_wandb = use_wandb and WANDB_AVAILABLE
+       
         #initial run name
         self.run_dir = run_dir
         #update run dir as we go. Automatically deals with repeat names. 
@@ -63,15 +64,16 @@ class Logger:
         self._current_metrics = {}
         self._last_step = None
         self.meta = meta
+        #TODO: Don't love the field names. 
         self.field_names = self._collect_all_fieldnames(config)
     
-        print(self.field_names)
+  
         self._rows = []
         self._init_csv_logger()
-        
+
         #saves standard output and error. 
         redirect_stdout_stderr(self.run_dir)
-
+        
         if self.use_wandb:
             set_wandb_api_key_from_file()
             wandb.init(project=self.project,
@@ -118,11 +120,14 @@ class Logger:
         self.csv_writer.writeheader()
 
     def log_scalar(self, name, value, step, step_type = "epoch"):
+        #NOTE: If step_type is epoch, then step = number of epochs. 
+        #WANDB only considers STEPS not epochs. 
         #only flush steps to wandb. 
-        if step_type == "step": 
-            print("LOG STEP")
-            self._flush_step(name, value, step)
-            return
+        #if step_type = "step":
+        #TODO: make sur4e this works here with everything being step. That means things aren't being added to everything else no? Fix this.
+        #print(f"name: {name}, step: {step}")
+        self._flush_step(name, value, step)
+        
         #if want to REMOVE dynamic addition - remove this if statement and the dictionary will raise a value error. 
         if name not in self.field_names:
             self.field_names.append(name)
@@ -144,10 +149,9 @@ class Logger:
         self.csv_writer.writerow(row)
         self.csv_file.flush()
         if self.use_wandb:
-            print("logging epoch")
+            #print("logging epoch")
             wandb.log(row, step=step)
     def _flush_step(self, name, value, step):
-        print("logging step: ", name)
         wandb.log({name: value}, step = step)
     def flush(self, step=None):
         step = step or self._last_step
@@ -173,7 +177,6 @@ class Logger:
         for row in self._rows:
             self.csv_writer.writerow(row)
     def save_plot(self, fig, name, step):
-        # in the plots subfolder. 
         plot_path = self.run_dir / "plots"
         plot_path.mkdir(parents=True, exist_ok = True)
         path = plot_path / name
@@ -183,8 +186,7 @@ class Logger:
         plt.close(fig)
       
         if self.use_wandb:
-            print("logging: ", name)
-            wandb.log({name: wandb.Image(str(path) )}, step = step)
+            wandb.log({name: wandb.Image(str(path))}, step = step)
 
     def save_checkpoint(self, model, epoch):
         check_path = self.run_dir / "checkpoints"

@@ -8,10 +8,10 @@ from visualization import plot_pca_scree, plot_pca_component, plot_pca_2d_scatte
 import io
 from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
-def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, external_pca_basis, relative_basis, do_plot, meta = None):
+def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, external_pca_basis, relative_basis, do_plot, step, meta = None):
     #%TODO: Fix global naming vs local naming. 
     outputDict = {}
-    if external_pca_basis is not None: 
+    if external_pca_basis is not None and external_pca_basis != (None, None): 
         components, pca_mean = external_pca_basis
         projected = (latents - pca_mean) @  components.T
         logger.save_artifact(projected, f"{layer}/projectedExt/projected_epoch_{epoch}") #this one is special - do we not need to do this in the external case?
@@ -47,9 +47,9 @@ def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, extern
 
         logger.save_artifact(projected, f"{layer}/projected/projected_epoch_{epoch}") #this one is special - do we not need to do this in the external case?
         fig = plot_pca_scree(n_components, explained_variance, cum_var, layer)
-        logger.save_plot(fig, f"{layer}/scree/scree_epoch_{epoch}.png", epoch)
+        logger.save_plot(fig, f"{layer}/scree/scree_epoch_{epoch}.png", step)
         fig = plot_pca_component(n_components, components)
-        logger.save_plot(fig, f"{layer}/basis/basis_epoch_{epoch}.png", epoch)
+        logger.save_plot(fig, f"{layer}/basis/basis_epoch_{epoch}.png", step)
     #saving the projected part. 
     
     #track latent shift
@@ -60,10 +60,10 @@ def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, extern
     
     if do_plot and n_components >= 2:
         fig = plot_pca_2d_scatter(projected, labels, layer)
-        logger.save_plot(fig, f"{layer}/pca_scatter_2d/pca_scatter_2d_epoch_{epoch}.png", epoch)
+        logger.save_plot(fig, f"{layer}/pca_scatter_2d/pca_scatter_2d_epoch_{epoch}.png", step)
     if do_plot and n_components>=3:
         fig = plot_pca_3d_scatter(projected, labels, layer)
-        logger.save_plot(fig, f"{layer}/pca_scatter_3d/pca_scatter_3d_epoch_{epoch}.png", epoch)
+        logger.save_plot(fig, f"{layer}/pca_scatter_3d/pca_scatter_3d_epoch_{epoch}.png", step)
     return projected, outputDict
 
         

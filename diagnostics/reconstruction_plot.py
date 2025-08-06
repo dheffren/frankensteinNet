@@ -6,7 +6,7 @@ from .registry import register_diagnostic
 from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
 @register_diagnostic()
-def log_reconstruction_plot(model, val_loader, logger, epoch, cfg, meta, **kwargs):
+def log_reconstruction_plot(model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
     #reconstruction plot diagnostic. 
     model.eval()
     #maybe see if this should ahve a default or not? 
@@ -22,7 +22,7 @@ def log_reconstruction_plot(model, val_loader, logger, epoch, cfg, meta, **kwarg
         inputs, target = model.prepare_input(batch)
         out = model(**inputs)
     fig = handle_reconstructions(target, out,  epoch, num_images, meta)
-    logger.save_plot(fig, f"recon_epoch_{epoch}.png", epoch)
+    logger.save_plot(fig, f"recon_epoch_{epoch}.png", step)
 def handle_reconstructions(target, out, epoch, num_images, meta):
     x = target["recon_target"]
     recon = out["recon"]

@@ -1,0 +1,51 @@
+
+
+
+### 8/4
+I figured out the problem with the logging from the changes introduced - it's the way wandb can only deal with STEPS, not epochs. For epochs, you need to pass them as another variable. So, when
+I do diagnostics, I need to pass in the global step AS WELL as the epoch: So i may need to rework some methods.
+
+This raises the question: How to represent per epoch metrics? 
+I think what i'll do is just add it at the end of the epoch. 
+
+Another thing to consider is about WHEN and how these hooks are called. 
+The way it works now is you have different lists which contain hooks called at different times. However, ideally you wouldn't have to put in the SAME method twice. 
+However, I think the way it is should stay mostly the same, because setting logic about "For every x epochs and y steps" would be complicated in a unified setting. 
+
+I fixed up some of the other problems with logging, but there's still an error regarding "step 1". 
+
+
+I need to seriously shore up my visualizations and metrics now, as I have no clue what i'm doing. 
+
+What are some metrics I might care about? 
+
+Train/val loss per epoch and per step. Graph this as a visualization. 
+Jacobian norm/sharpness of the network w.r.t 
+Reconstructions
+Project loss landscape
+
+
+Interpretability on latent vectors AND weights themselves. 
+
+Plots I like: 
+Visualization of PCA embeddings of each representation(how to do higher dim?)
+NEED: Visualization of the latent spaces THEMSELVES. 
+Analyze computes trajectories of latent representations in PCA (in the same basis). However, the visualization is flawed, hard to follow. Need to have lines between consecutive points, or some sort of moving graph. 
+
+Also want trajectories of PCA of the WEIGHTS of the network (do we need pca?). We have the norms graphed, but do we care about the weights themselves? 
+
+Some way of visualizing which parts of the network are used most, as well as which parts of a given input are used most in an answer. 
+
+Need to get rid of the noise so I can just see and understand. 
+
+I have jacobian norms of the latent layers w.r.t some input, and the latent norms ie taking the meqan, std and max/min of the normsof the latent vectors. 
+
+
+Need to shore up post analysis framework to make it easier to work with. 
+
+Weight norm vs Grad norm? 
+
+I have nice graphs for those two which suggest that the encoders are useless at the beginning, which makes sense, it's trying to prioritize accurate reconstructions. 
+Would like some way of looking at specific plots interactively but idk. The PCA coefficients seem to explode, which is reflected by how the latent norms get quite large. I forget what this suggests, Could this be exploding gradients? 
+
+I should start running sweeps once that's ready and I have these visualizations more carefully curated. 

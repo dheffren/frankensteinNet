@@ -31,7 +31,19 @@ class Trainer:
     def train(self):
         #PLACEHOLDER
         self.model.train()
-        self.prerun_diagnostics()
+        self.hook_manager.call(trigger_point = None, trigger = "begin",
+                                   step = self.global_step, 
+                                   model = self.model, 
+                                   logger = self.logger, 
+                                   val_loader = self.val_loader, 
+                                   epoch = -1, 
+                                   cfg = self.config, 
+                                   meta = self.meta, 
+                                   train_metrics = None, 
+                                   val_metrics = None, 
+                                   step_type = "epoch", 
+                                   lr = self.optimizer.param_groups[0]["lr"])
+        #self.prerun_diagnostics() # diagnostics which run before ANY training
         print("cudnn benchmark is enabled:", torch.backends.cudnn.benchmark) 
         torch.backends.cudnn.benchmark = True
         for epoch in range(self.config["training"]["epochs"]):
@@ -39,11 +51,11 @@ class Trainer:
             use_gradients = True
             return_dict_train = self.train_epoch(epoch)
             #log gradient norms here. 
-            
             return_dict_val = self.evaluate(epoch, use_gradients)
             print(f"Epoch {epoch}: Train {return_dict_train['loss']['loss']}, Val {return_dict_val['loss']['loss']}")
             #update scheduler - if no scheduler, should still work as a constant. 
             self.scheduler.step() #-- if want to update lr in the middle of epoch, will have to do in train epoch. 
+            
             # log things we care about. 
             self.hook_manager.call(trigger_point = epoch, trigger = "epoch", 
                                    step = self.global_step, 
@@ -88,7 +100,10 @@ class Trainer:
             dict_dict = self.track_vals(dict_dict, val_dict, epoch, step_log)
             #what on earth is this? - total number of optimizer steps. 
             self.global_step += 1
+            
             step_count+=1
+            
+           
         #slower if not logging losses same way but whatever. 
         dict_dict = {name: {k: v/step_count for k,v in dict.items()} for name, dict in dict_dict.items()}
       
@@ -106,6 +121,7 @@ class Trainer:
                    
         #TODO: Returning from here "rounds off" values in a way i don't like.
         # Extra stuff here - but i don't really have anything.  
+        #TODO: Check thiseliminate redundancy. Might run into problems calling twice in training. 
         if step_log and hasattr(self, "hook_manager"):
             self.hook_manager.call(
                 trigger_point = self.global_step,
@@ -223,17 +239,3 @@ class Trainer:
             for layer, norm_sq_list in layer_norms.items():
                 norms[layer] = sum(norm_sq_list)**.5
         return norms
-   
-
-    def prerun_diagnostics(self):
-        ### Run certain diagnostic things at the beginning of the run, both for tracking and other needs. 
-        #TODO: Make this more generalizable. 
-        diag_cfg = self.config["diagnostics_config"]
-        from diagnostics.helper import run_pca_analysis, compute_latent_all
-        layers = diag_cfg.get("layer_pca_layers", ["latent"])
-        max_batches = diag_cfg.get("max_batches", 120)#TODO: This may be a problem
-        n_components = diag_cfg.get("layer_pca_components", 5)
-        for layer in layers: 
-            latents, labels = compute_latent_all(self.model, self.val_loader, layer, max_batches)
-            projections, outputDict = run_pca_analysis(latents, labels, f"{layer}", self.logger, -1, n_components, None, None, False, self.meta)
-            #if want to plot this stuff at the beginning of epoch. , can also do the prerun hooks. 

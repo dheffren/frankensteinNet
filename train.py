@@ -148,7 +148,7 @@ class Trainer:
             context = contextlib.nullcontext()
         else:
             context = torch.no_grad()
-
+            print("No grad")
         with context:
             for batch in self.val_loader: 
                 start = time.time()

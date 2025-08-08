@@ -2,17 +2,17 @@
 # -------------------------------------------------------------
 # 1)  Point to ANY normal, hand‑written config that trains.
 #     (The sweeper will copy it, then override fields below.)
-base_config: configs/autoencoder.yaml
+base_config: configs/dualConvAutoencoder.yaml
 
 # 2)  One human label for the whole sweep.
 #     This becomes the parent folder inside  runs/sweeps/<run_name>/<stamp>/
-run_name: extraGoodRun
+run_name: firstSweepTest
 
 # 3)  Hyper‑parameter search space  (dot‑notation = nested key)
 method: grid          # grid | random
 sweep:
   model.latent_dim:   [32, 64, 128]
-  optim.lr:           [1e-4, 5e-4]
+  optim.lr:           [1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 1e-5]
 
 #   ––  If you want random search instead:
 # method: random

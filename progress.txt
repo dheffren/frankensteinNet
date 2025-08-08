@@ -49,3 +49,38 @@ I have nice graphs for those two which suggest that the encoders are useless at 
 Would like some way of looking at specific plots interactively but idk. The PCA coefficients seem to explode, which is reflected by how the latent norms get quite large. I forget what this suggests, Could this be exploding gradients? 
 
 I should start running sweeps once that's ready and I have these visualizations more carefully curated. 
+
+
+
+8/8
+I want to visualize the latent space. 
+Easiest/first way is plot trajectories of latent space. 
+Also you can perturb the input and see how the latent space varies. This would be some smoothness metric. 
+ Jacobian of latent w.r.t inputs? 
+mUTUAL INFO BETWEEN LATENS AND INPUTS. 
+
+rECONSTRUCTION ERRO. 
+
+
+I made a hessian method which gets answers, not sure if it's right though. 
+
+Working on perturbation, however, some stuff I may want to do more often than other stuff. Will need to call it in different contexts perhaps, put a wrapper over it. 
+
+Computed these metrics there: 
+relative loss 
+curvature (approximating vTHv so can check when do that. )
+mean/std/iqr latent shift
+mean/std/iqr lipschitz
+CKA - can use on the shifted vs original latents, as well as in many other places. 
+
+Need to plot: 
+delta L vs eps
+latent shift vs eps
+curvature at some epsilons
+PCA/UMAP of latent trajectories for epsilons growing, or multiple diff epsilons.
+Reconstructions:     3 x K input, base recon, perturbed recon. 
+loss heatmap.  
+
+Got the heatmap and the hessian stuff done! Glad that's mostly out of the way. 
+The model is exploding up in every sense of the word, and i'm trying to make sense of it. 
+I think i might need to add batch Normalization or some other normalization method like gradient clipping. 

@@ -338,6 +338,9 @@ def plot_latent_trajectoriesHelp(latents_over_time, epochs, layer_name, num_poin
 
 
 def plot_latent_norms(metrics_path, save_dir = None, show = False):
+    """
+    We save the latent norms over times, this plots a heatmap of these latent norms. 
+    """
     weight_df = get_method(metrics_path, "latent_norm", exclude = ".")
     melted = weight_df.melt(id_vars='epoch', var_name='param', value_name='latent_norm')
     print(weight_df)

@@ -91,6 +91,8 @@ diagnostics:
   - latent_norms
   - global_pca
   - hessian
+  - weight_perturb
+  - loss_surface_heatmap
 diagnostics_config:
   tensor_stats_diag_keys: ["latent_uh1", "latent_uh2","latent_u1", "latent_u2", "latent_c1", "latent_c2", "recon_x1", "recon_x2", ]
   tensor_stats_diag_suffixes: ["mean", "std", "min", "max"]

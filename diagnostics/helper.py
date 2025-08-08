@@ -105,3 +105,4 @@ def compute_latent_batch(model, val_loader, layer, seed, num_samples = 12):
         if targets.get("labels_y", None) is not None:
             labels= targets["labels_y"].detach().cpu()
     return latents, labels
+

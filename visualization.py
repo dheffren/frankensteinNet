@@ -116,3 +116,8 @@ def plot_pca_3d_scatter(components, all_labels, key):
     ax.set_zlabel("PC3")
     ax.set_title(f"{key} PCA Scatter (3D)")
     return fig
+
+def animateGraph():
+    fig, ax = plt.subplots()
+    # Initialize an empty plot or a plot with initial data
+    line, = ax.plot([], [], 'b-') # Example for a line plot

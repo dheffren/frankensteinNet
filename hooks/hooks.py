@@ -27,3 +27,7 @@ def save_checkpoints(step, model,   logger, epoch, **kwargs):
 def log_learning_rate(step, logger, lr, step_type, **kwargs):
     #print("logging lr")
     logger.log_scalar("lr", lr, step, step_type = step_type)
+
+
+
+

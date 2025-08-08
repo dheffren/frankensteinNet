@@ -2,7 +2,9 @@
 from hessian_eigenthings import compute_hessian_eigenthings
 from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
+from .metrics import lanczos, hvp
 from .registry import register_diagnostic
+import torch
 @register_diagnostic() 
 def hessian(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     """Computes PCA over the latent vectors in the model output and logs explained variance ratios.
@@ -31,11 +33,23 @@ def hessian(model, val_loader, logger, epoch, cfg, meta, **kwargs):
 
     outputDict = {
     }
-    num_eigenthings = 20
-    print("here")
-    print(val_loader)
-    eigenvals, eigenvecs = compute_hessian_eigenthings(model, val_loader, None, num_eigenthings)
-    print("Done")
-    outputDict['eigenval'] = eigenvals
-    outputDict['eigenvec'] = eigenvecs
+    params = [p for p in model.parameters() if p.requires_grad]
+
+    dim = sum(p.numel() for p in params)
+   
+    batch = get_fixed_batch(val_loader, seed, num_samples = num_latents)
+    Hv_op = Hv_op_factory(model, batch, epoch)
+    #TODO: Set up m as a hyperparameter. 
+    eigenvals = lanczos(Hv_op, dim, m = 30, device = cfg["device"], seed = seed)
+    print("eigenvals: ", eigenvals)
+    k = min(5, len(eigenvals))
+    topk = torch.topk(eigenvals, k).values
+    for i in range(k):
+        outputDict[f"eigenval_{k-i}"] = topk[i]
     return outputDict
+
+
+def Hv_op_factory(model, batch, epoch):
+    def Hv_op(v):
+        return hvp(model, batch, v, epoch, create_graph = False)
+    return Hv_op

@@ -1,6 +1,5 @@
 class HookManager:
-    #TODO: Rework hook manager to not deal with "different epoch vs step vs begin" but instead just deal with steps. 
-    #can handle the details of whether it should be called and how in the should_run, no? Then we don't have to redo same metric for epoch and step and begin. 
+    
     def __init__(self):
         self.hooks = {"epoch": [], "step": [], "begin":[], "end":[]}
 

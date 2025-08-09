@@ -36,6 +36,7 @@ def relative_mse_loss(x: torch.Tensor, x_hat: torch.Tensor, eps = 1e-8) -> torch
     x_hat = x_hat.view(x_hat.shape[0], -1)
     L2dist = torch.sum((x - x_hat)**2, dim = -1)
     normalized = L2dist/ (torch.sum(x**2, dim=-1) + eps)
+    #Taking mean over batch, that's good. 
     return torch.mean(normalized)
 
 def bce_loss(x: torch.Tensor, x_hat: torch.Tensor) -> torch.Tensor:

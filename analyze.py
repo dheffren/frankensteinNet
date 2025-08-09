@@ -66,6 +66,8 @@ def plot_loss_curves(metrics_path, save_dir=None, show=False):
     for col in metrics.columns:
         if col == 'epoch': 
             continue
+        print(f"col: {col}")
+        print(metrics[col])
         plt.plot(metrics["epoch"], metrics[col], label = col)
     plt.xlabel("Steps")
     plt.ylabel("Loss")

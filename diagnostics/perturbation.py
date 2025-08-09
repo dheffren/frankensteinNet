@@ -4,6 +4,7 @@ from .registry import register_diagnostic
 from utils.fixedBatch import get_fixed_batch
 import numpy as np
 import matplotlib.pyplot as plt
+from metrics import CKA
 @register_diagnostic()
 def loss_surface_heatmap(model, val_loader, logger, epoch, cfg, meta,step, **kwargs):
     diag_cfg = cfg.get("diagnostics_config", {})
@@ -14,10 +15,11 @@ def loss_surface_heatmap(model, val_loader, logger, epoch, cfg, meta,step, **kwa
     direction_types = diag_cfg.get("direction_types", ['random', 'gradient'])
     num_dirs = diag_cfg.get("num_dirs", 4)
     #heatmap_dirs = 
-
     num_latents = diag_cfg.get("num_latents", 20)
     seed = diag_cfg.get("fixed_batch_seed", 32)
+    
     model.eval()
+    #TODO: Set this manually
     eps = .0001   
     outputDict = {
     }
@@ -25,12 +27,11 @@ def loss_surface_heatmap(model, val_loader, logger, epoch, cfg, meta,step, **kwa
     #get the inputs and target for the default batch. 
     
 
-    tau = .001
     #loss_dict_base = model.compute_loss_helper(out, targetbase, epoch) #epoch doesn't make sense as a post training thing. 
-    print('starting weight perturb')
+
    
     #TODO: Think about metric here when doing GS or QR - could weight different params by different amounts. 
-    # COuld also use two lanczos directions ie top 2 hessian eigenvectors. 
+    # COuld also use two lanczos directions ie top 2 hessian eigenvectors.
     raw1 = make_random_direction(model)
     raw2 = make_random_direction(model)
     v1, v2 = qr_two(raw1, raw2) #two orthonormal vectors. '
@@ -55,29 +56,19 @@ def loss_surface_heatmap(model, val_loader, logger, epoch, cfg, meta,step, **kwa
      
             #inputs, target = model.prepare_input(batch)
             loss = model.compute_loss(batch, epoch)["loss"].detach() #NEED DETACH TO STOP TRACKING GRADIENTS. 
-            print('loss: ', loss)# not computing loss to the right level of precision
+          
       
             #loss = model.compute_loss_helper(out, target, epoch)["loss"]
-            print("restore weights")
+   
             restore_weights(model, saved_weights)
        
             lossGrid[i, j] = loss
 
-    print("loss Grid: ", lossGrid)
     # GRAPH THE HEATMAP
     fig = graph_heatmap(lossGrid, epsilons, epsilons)
-    print("Step: ", step)
     logger.save_plot(fig, f"loss_landscape_epoch_{epoch}.png", step)
     #Draw reconstructions in same grid format. - can't do with dual structure. 
-def check_mem():
-    free_bytes, total_bytes = torch.cuda.mem_get_info()
 
-    # Convert to GB for readability
-    free_gb = free_bytes / (1024**3)
-    total_gb = total_bytes / (1024**3)
-
-    print(f"Free GPU memory: {free_gb:.2f} GB")
-    print(f"Total GPU memory: {total_gb:.2f} GB")
 
 def graph_heatmap(lossGrid, alphas, betas, title = "loss surface", cmap = "viridis"):
     Z = lossGrid.detach().cpu().numpy()
@@ -151,11 +142,11 @@ def weight_perturb(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     #get the inputs and target for the default batch. 
     inputsbase, targetbase = model.prepare_input(batch)
     out = model(**inputsbase)
-    tau = .001
+
     out_base = dict(flatten(out))
 
     loss_dict_base = model.compute_loss_helper(out, targetbase, epoch)
-    print('starting weight perturb')
+    base_loss = loss_dict_base["loss"].item()
     for direction_type in direction_types: 
      
         dir = get_direction(model, batch, direction_type, epoch)
@@ -168,20 +159,22 @@ def weight_perturb(model, val_loader, logger, epoch, cfg, meta, **kwargs):
             outd = dict(flatten(out))
             
             loss_dict = model.compute_loss_helper(out, target, epoch)
-            print("loss: ", loss_dict["loss"])
-            outputDict[f"rel_loss_{direction_type}_{eps}"] = (loss_dict["loss"] - loss_dict_base["loss"])/(loss_dict_base["loss"] + tau)
-            outputDict[f"curvature_{direction_type}_{eps}"] = (2*outputDict[f"rel_loss_{direction_type}_{eps}"])/(eps**2) # Curvature proxy. 
             
+            loss = loss_dict["loss"].item()
+            outputDict[f"rel_loss_{direction_type}_{eps}"] = (loss - base_loss)/(base_loss + 1e-12)
+            outputDict[f"curvature_{direction_type}_{eps}"] = (2*outputDict[f"rel_loss_{direction_type}_{eps}"])/(eps**2) # Curvature proxy. 
+            print("Output dict: ", outputDict[f"rel_loss_{direction_type}_{eps}"])
 
             # Visualize Recon. 
 
            
             restore_weights(model, saved_weights)
-            print("finished restore weights. ")
+       
             #TODO: Check equality or original and reconstruction. 
     #heatmap = compute_loss_surface_heatmap(model, batch, directions[])
     return outputDict
-def lipschitz(out, out_base, epsilon, dir, tau):
+
+def latent_analysis(out, out_base, epsilon, dir, tau = 1e-12):
     """
     out is a specific layer or latent or output of the model. Not in dict form anymore. Call this on EACH THING you want to look at. 
 
@@ -196,6 +189,9 @@ def lipschitz(out, out_base, epsilon, dir, tau):
     mean_lipschitz = lipschitzConst.mean()
     std_lipschitz = lipschitzConst.std()
     iqr_lipschitz = lipschitzConst.quartile(.75) - lipschitzConst.quartile(.25)
+    #compare the two layers. 
+    ckaVal = CKA(out_base, out)
+
 
 def get_direction(model, batch, direction, epoch):
     if direction == 'random': 
@@ -234,5 +230,4 @@ def perturb_weights(model, dir,eps):
             if p.requires_grad:
                 p.add_(eps * d)
         return saved_weights
-def loss_surface_heatmap():
-    return
+

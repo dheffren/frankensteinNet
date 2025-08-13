@@ -1,9 +1,3 @@
-"""
-Load metrics .ccsv from runs, merge into a dataframe, compute statistics, generate comparative plots automatically. 
-Results Collector/aggregator
-
-TODO: Add more methods here to look at specific statistics or plots. 
-"""
 import pandas as pd
 import glob
 import matplotlib.pyplot as plt
@@ -13,6 +7,7 @@ from matplotlib.colors import LogNorm
 import os
 import numpy as np
 from sklearn.decomposition import PCA
+from .registry import register_diagnostic
 
 def load_all_results(pattern="runs/*/metrics.csv"):
     dfs = []
@@ -61,7 +56,7 @@ def plot_loss_curves(metrics_path, save_dir=None, show=False):
     """
     Plots train and validation loss curves from a metrics.csv file.
     """
-    metrics = get_method(metrics_path, "loss")
+    metrics = get_method(metrics_path, "epoch/loss").dropna()
     plt.figure()
     for col in metrics.columns:
         if col == 'epoch': 
@@ -83,7 +78,7 @@ def plot_learning_rate(metrics_path, save_dir=None, show=False):
     Plots learning rate over training.
     """
     print("got to learning rate")
-    metrics = get_method(metrics_path, "lr")
+    metrics = get_method(metrics_path, "lr").dropna()
     if "lr" not in metrics.columns:
         return
     print("here")
@@ -115,8 +110,7 @@ def analyze_grad_norms(metrics_csv_path, save_dir = None, show = False):
     Args:
         metrics_csv_path (str): Path to the metrics.csv file.
     """
-    print("GOT TO GRAPHING GRAD NORMS. ")
-    grad_df = get_method(metrics_csv_path, "grad_norm", exclude = ".")
+    grad_df = get_method(metrics_csv_path, "/epoch/grad_norm", exclude = ".").dropna()
     melted = grad_df.melt(id_vars='epoch', var_name='param', value_name='grad_norm')
 
     # === Histogram of last epoch ===
@@ -152,7 +146,7 @@ def analyze_grad_norms(metrics_csv_path, save_dir = None, show = False):
     if show:
         plt.show()
 def analyze_weight_norms(metrics_csv_path, save_dir = None, show = False):
-    weight_df = get_method(metrics_csv_path, "grad_norm", exclude = ".")
+    weight_df = get_method(metrics_csv_path, "epoch/grad_norm", exclude = ".").dropna()
     melted = weight_df.melt(id_vars='epoch', var_name='param', value_name='weight_norm')
 
     # Lineplot of weight norm over time
@@ -343,9 +337,8 @@ def plot_latent_norms(metrics_path, save_dir = None, show = False):
     """
     We save the latent norms over times, this plots a heatmap of these latent norms. 
     """
-    weight_df = get_method(metrics_path, "latent_norm", exclude = ".")
+    weight_df = get_method(metrics_path, "latent_norms/epoch", exclude = ".").dropna()
     melted = weight_df.melt(id_vars='epoch', var_name='param', value_name='latent_norm')
-    print(weight_df)
     # Lineplot of weight norm over time
     plt.figure(figsize=(10, 6))
     for name, group in melted.groupby('param'):
@@ -373,7 +366,9 @@ def plot_latent_norms(metrics_path, save_dir = None, show = False):
         plt.savefig(Path(save_dir) / "latent_norm_heatmap.png")
     if show:
         plt.show()
-def plot_all_metrics(run_dir):
+
+@register_diagnostic("plot_metrics", default_every = 1, default_trigger = "post_Run")
+def plot_all_metrics(name, trigger, run_dir):
     """
     Loads metrics from the run directory and generates default plots.
     #TODO: Make plot all metrics automatic for all things I'm trying to track. 
@@ -381,7 +376,7 @@ def plot_all_metrics(run_dir):
 
     run_path = Path(run_dir)
     metrics_path = run_path / "metrics.csv"
-
+    print("running register diagn ostic") 
     if not metrics_path.exists():
         print(f"[Analyze] No metrics.csv found in {run_dir}")
         return

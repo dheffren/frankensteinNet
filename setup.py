@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
-from utils.setup_hooks import register_diagnostics_as_hooks, register_hooks_from_config
+from utils.setup_hooks import register_hooks_from_config
 from hookManager import HookManager
 @dataclass
 class ExperimentBundle:
@@ -33,8 +33,6 @@ def setup_experiment(config) -> ExperimentBundle:
     scheduler = build_scheduler(optimizer, config)
     hook_mgr = HookManager()
     register_hooks_from_config(hook_mgr, config)
-    register_diagnostics_as_hooks(hook_mgr, config)
-    print("got here")
     #TODO: Deal with resume 
     run_manager = RunManager(config, "runs", False)
     #don't love this reference here. 

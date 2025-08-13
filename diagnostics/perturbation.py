@@ -4,9 +4,10 @@ from .registry import register_diagnostic
 from utils.fixedBatch import get_fixed_batch
 import numpy as np
 import matplotlib.pyplot as plt
-from metrics import CKA
-@register_diagnostic()
-def loss_surface_heatmap(model, val_loader, logger, epoch, cfg, meta,step, **kwargs):
+from .metrics import CKA
+from .helper import log_scalars
+@register_diagnostic("loss_surface_heatmap", default_trigger = "epoch", default_every = 5)
+def loss_surface_heatmap(name, trigger, model, val_loader, logger, epoch, cfg, meta,step, lr, **kwargs):
     diag_cfg = cfg.get("diagnostics_config", {})
     layers = diag_cfg.get("layer_pca_layers", ["latent"])
     n_components = diag_cfg.get("layer_pca_components", 5)
@@ -14,13 +15,15 @@ def loss_surface_heatmap(model, val_loader, logger, epoch, cfg, meta,step, **kwa
     save_latents = diag_cfg.get("save_latents", False)
     direction_types = diag_cfg.get("direction_types", ['random', 'gradient'])
     num_dirs = diag_cfg.get("num_dirs", 4)
+    
     #heatmap_dirs = 
     num_latents = diag_cfg.get("num_latents", 20)
     seed = diag_cfg.get("fixed_batch_seed", 32)
-    
+
     model.eval()
     #TODO: Set this manually
-    eps = .0001   
+    n = 25
+    eps = (n*lr)/5 #adjust. 
     outputDict = {
     }
     batch = get_fixed_batch(val_loader, seed, num_samples= num_latents)
@@ -35,7 +38,7 @@ def loss_surface_heatmap(model, val_loader, logger, epoch, cfg, meta,step, **kwa
     raw1 = make_random_direction(model)
     raw2 = make_random_direction(model)
     v1, v2 = qr_two(raw1, raw2) #two orthonormal vectors. '
-    n = 25
+    
     half = n//2
     lossGrid = torch.zeros(n, n)
   
@@ -66,7 +69,7 @@ def loss_surface_heatmap(model, val_loader, logger, epoch, cfg, meta,step, **kwa
 
     # GRAPH THE HEATMAP
     fig = graph_heatmap(lossGrid, epsilons, epsilons)
-    logger.save_plot(fig, f"loss_landscape_epoch_{epoch}.png", step)
+    logger.save_plot(fig, f"{name}/{trigger}/{epoch}.png", step)
     #Draw reconstructions in same grid format. - can't do with dual structure. 
 
 
@@ -116,8 +119,8 @@ def input_perturb(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     However, this is teh same as computing the operator norm of the jacobian. 
 
     """
-@register_diagnostic() 
-def weight_perturb(model, val_loader, logger, epoch, cfg, meta, **kwargs):
+@register_diagnostic("weight_perturb", default_trigger = "epoch", default_every = 5) 
+def weight_perturb(name, trigger, model, val_loader, logger, epoch, cfg, meta,step,  **kwargs):
     """
     Goal: Estimate lipschitz constant of the encoder w.r.t the weights. This tells us something about how "smooth" 
     the network outputs vary with respect to the weights.  
@@ -130,13 +133,14 @@ def weight_perturb(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     direction_types = diag_cfg.get("direction_types", ['random', 'gradient'])
     num_dirs = diag_cfg.get("num_dirs", 4)
     #heatmap_dirs = 
-    epsilons = diag_cfg.get("epsilons", [1e-4, 5e-4, 1e-3])
+    epsilons = diag_cfg.get("epsilons", [1e-4, 5e-4, 1e-3]) #make these relative to learning rate maybe. 
     num_latents = diag_cfg.get("num_latents", 20)
     seed = diag_cfg.get("fixed_batch_seed", 32)
     model.eval()
     eps = .01    
     outputDict = {
     }
+    #maybe make perturbed directions singular components or something. 
     #get a fixed batch
     batch = get_fixed_batch(val_loader, seed, num_samples= num_latents)
     #get the inputs and target for the default batch. 
@@ -155,26 +159,30 @@ def weight_perturb(model, val_loader, logger, epoch, cfg, meta, **kwargs):
      
             saved_weights = perturb_weights(model, dir, eps)
             inputs, target = model.prepare_input(batch)
-            out = model(**inputs)
+            outNew = model(**inputs)
             outd = dict(flatten(out))
             
-            loss_dict = model.compute_loss_helper(out, target, epoch)
+            loss_dict = model.compute_loss_helper(outNew, target, epoch)
             
             loss = loss_dict["loss"].item()
-            outputDict[f"rel_loss_{direction_type}_{eps}"] = (loss - base_loss)/(base_loss + 1e-12)
-            outputDict[f"curvature_{direction_type}_{eps}"] = (2*outputDict[f"rel_loss_{direction_type}_{eps}"])/(eps**2) # Curvature proxy. 
-            print("Output dict: ", outputDict[f"rel_loss_{direction_type}_{eps}"])
-
+            outputDict[f"rel_loss/{direction_type}/{eps}"] = (loss - base_loss)/(base_loss + 1e-12)
+            outputDict[f"curvature/{direction_type}/{eps}"] = (2*outputDict[f"rel_loss/{direction_type}/{eps}"])/(eps**2 + 1e-12) # Curvature proxy. 
+            print("Output dict: ", outputDict[f"rel_loss/{direction_type}/{eps}"])
+            for layer in layers:
+                dicti = latent_analysis(outd[layer], out_base[layer], layer, eps, dir)
+                print("Dicti: ", dicti)
             # Visualize Recon. 
-
+                for k, v in dicti.items():
+                    outputDict[k + f"/{direction_type}/{eps}"] = v
            
             restore_weights(model, saved_weights)
        
             #TODO: Check equality or original and reconstruction. 
     #heatmap = compute_loss_surface_heatmap(model, batch, directions[])
+    log_scalars(name, trigger, outputDict, step, logger)
     return outputDict
 
-def latent_analysis(out, out_base, epsilon, dir, tau = 1e-12):
+def latent_analysis(out, out_base, layer_name, epsilon, dir, tau = 1e-12,):
     """
     out is a specific layer or latent or output of the model. Not in dict form anymore. Call this on EACH THING you want to look at. 
 
@@ -184,15 +192,15 @@ def latent_analysis(out, out_base, epsilon, dir, tau = 1e-12):
     #avg shift in latent relative to size of latent. 
     mean_latent_shift = latent_shift.mean()
     std_latent_shift = latent_shift.std()
-    iqr_latent_shift = latent_shift.quartile(.75) - latent_shift.quartile(.25)
+    #iqr_latent_shift = latent_shift.quartile(.75) - latent_shift.quartile(.25)
     lipschitzConst = torch.norm(out - out_base, dim = -1)/epsilon
     mean_lipschitz = lipschitzConst.mean()
     std_lipschitz = lipschitzConst.std()
-    iqr_lipschitz = lipschitzConst.quartile(.75) - lipschitzConst.quartile(.25)
+    #iqr_lipschitz = lipschitzConst.quartile(.75) - lipschitzConst.quartile(.25)
     #compare the two layers. 
     ckaVal = CKA(out_base, out)
 
-
+    return {f"mls/{layer_name}": mean_latent_shift, f"ml/{layer_name}": mean_lipschitz, f"cka/{layer_name}": ckaVal}
 def get_direction(model, batch, direction, epoch):
     if direction == 'random': 
         #CHECK THE NORMS HERE. 

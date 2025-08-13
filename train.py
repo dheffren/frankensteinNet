@@ -31,7 +31,7 @@ class Trainer:
     def train(self):
         #PLACEHOLDER
         self.model.train()
-        self.hook_manager.call(trigger_point = None, trigger = "begin",
+        self.hook_manager.call(trigger_point = 0, trigger = "begin",
                                    step = self.global_step, 
                                    model = self.model, 
                                    logger = self.logger, 
@@ -55,7 +55,7 @@ class Trainer:
             print(f"Epoch {epoch}: Train {return_dict_train['loss']['loss']}, Val {return_dict_val['loss']['loss']}")
             #update scheduler - if no scheduler, should still work as a constant. 
             self.scheduler.step() #-- if want to update lr in the middle of epoch, will have to do in train epoch. 
-            
+            #if i want per epoch values for train metrics somewhere, I have to DO the computation - it won't just give me everything. 
             # log things we care about. 
             self.hook_manager.call(trigger_point = epoch, trigger = "epoch", 
                                    step = self.global_step, 
@@ -72,8 +72,22 @@ class Trainer:
                                    )
             #logging per epoch - done manually here. 
             self.logger.flush(self.global_step)
+        self.hook_manager.call(trigger_point = epoch, trigger = "end", 
+                                   step = self.global_step, 
+                                   model = self.model, 
+                                   logger = self.logger, 
+                                   val_loader = self.val_loader, 
+                                   epoch = epoch, 
+                                   cfg = self.config, 
+                                   meta = self.meta, 
+                                   train_metrics = return_dict_train, 
+                                   val_metrics = return_dict_val, 
+                                   step_type = "epoch", 
+                                   lr = self.optimizer.param_groups[0]["lr"]
+                                   )
         
-    def train_epoch(self, epoch, step_log = False):
+        
+    def train_epoch(self, epoch):
         self.model.train()
 
         dict_dict = {"loss": {}, "grad_norm":{}, "weight_norm":{}, "time": {}}
@@ -97,21 +111,21 @@ class Trainer:
             self.optimizer.step()
             end = time.time()
             val_dict["time"] = {"time": end-start}
-            dict_dict = self.track_vals(dict_dict, val_dict, epoch, step_log)
+            dict_dict = self.track_vals(dict_dict, val_dict, epoch)
             #what on earth is this? - total number of optimizer steps. 
+            self.logger.flush(self.global_step)
             self.global_step += 1
             
             step_count+=1
             
            
-        #slower if not logging losses same way but whatever. 
+        #This gets per epoch train metrics. 
         dict_dict = {name: {k: v/step_count for k,v in dict.items()} for name, dict in dict_dict.items()}
       
         return dict_dict
-    def track_vals(self, dict_dict, val_dict, epoch, step_log = False):
-        #val list should be same length as dict_dict? Or not. 
+    def track_vals(self, dict_dict, val_dict, epoch):
+        #This aggregates the stats into per epoch.
         for name, dict in val_dict.items():
-            #now looking at a specific val dict
             for k, v in dict.items():
                 if k not in dict_dict[name].keys():
                     dict_dict[name][k] = 0.0
@@ -121,8 +135,8 @@ class Trainer:
                    
         #TODO: Returning from here "rounds off" values in a way i don't like.
         # Extra stuff here - but i don't really have anything.  
-        #TODO: Check thiseliminate redundancy. Might run into problems calling twice in training. 
-        if step_log and hasattr(self, "hook_manager"):
+     
+        if hasattr(self, "hook_manager"):
             self.hook_manager.call(
                 trigger_point = self.global_step,
                 trigger="step",
@@ -172,8 +186,8 @@ class Trainer:
                     config=self.config,
                     meta=self.meta
                 )
-                #should I do this? 
-                self.global_step+=1
+                #should I do this? A: No!
+                #self.global_step+=1
                 step_count+=1
                 #don't do per batch evaluation. 
         avg_loss= {k: v/step_count for k,v in avg_loss_dict.items()}

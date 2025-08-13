@@ -4,14 +4,10 @@ from .registry import register_diagnostic
 from utils.flatten import flatten, safe_keyname
 from utils.fixedBatch import get_fixed_batch
 from .helper import *
-def jac_field_fn(cfg:dict):
-    pairs = cfg.get("jacobian_norm_diag_pairs", [])
-    suffixes = cfg.get("jacobian_norm_diag_suffixes", ["fro"])
-    print(pairs)
-    return [f"{p['of']}_wrt_{p['wrt']}/{suff}" for p in pairs for suff in suffixes]
+
 #TODO: Automatic field naming isn't working here - using dynamic. It works for now, but not intended. I think maybe ALL field naming being dynamic would be better. 
-@register_diagnostic(name = "jacobian_norm_diag", field_fn = jac_field_fn)
-def jacobian_norm_diag(model, val_loader, logger, epoch, cfg, meta, **kwargs):
+@register_diagnostic(name = "jacobian_norm_diag", default_trigger="epoch", default_every=5)
+def jacobian_norm_diag(name, trigger, model, val_loader, logger, epoch, cfg, meta,step,  **kwargs):
     #TODO: Fix this so the things it's "calling" are in this file insetad of in that suffix file. 
     """
     Note: 
@@ -75,4 +71,6 @@ def jacobian_norm_diag(model, val_loader, logger, epoch, cfg, meta, **kwargs):
                 #print("here")
             except Exception as e:
                 print(f"[JacobianDiag] Failed for {pair}/{suffix}: {e}")
+    #LOG HERE: Don't return output dict. 
+    log_scalars(name, trigger,outputDict, step, logger)
     return outputDict

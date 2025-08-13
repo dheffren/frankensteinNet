@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from datetime import datetime
-from diagnostics import get_diagnostics, get_fields
+from diagnostics import get_diagnostics
 from pathlib import Path
 
 import inspect
@@ -51,9 +51,11 @@ class Logger:
     Checkpoints
     All saved plots, metrics, versions, seed, config, hyperparameters, diagnostic artifacts, and checkpoints go through th elogger. 
     """
-    def __init__(self, run_dir, config, meta, use_wandb = True):
+    def __init__(self, run_dir, config, meta):
+        use_wandb = config.get("logging", {}).get("use_wandb")
         self.use_wandb = use_wandb and WANDB_AVAILABLE
-       
+        self.save_artifacts = config.get("logging", {}).get("save_artifacts", False)
+        self.save_checkpoints = config.get("training", {}).get("save_checkpoints", False)
         #initial run name
         self.run_dir = run_dir
         #update run dir as we go. Automatically deals with repeat names. 
@@ -65,7 +67,7 @@ class Logger:
         self._last_step = None
         self.meta = meta
         #TODO: Don't love the field names. 
-        self.field_names = self._collect_all_fieldnames(config)
+        self.field_names = []
     
   
         self._rows = []
@@ -90,26 +92,7 @@ class Logger:
         print(f"  Called from: {stack[1].filename}:{stack[1].lineno}")
 
         return self._original_log(*args, **kwargs)     
-    def _collect_all_fieldnames(self, config):
-        #TODO: this works really well, but the last thing I need to check is if we dynamically add something at a DIFFERENT epoch than 0 - does it rewrite the whole file correctly. 
-        #field anmes are out of date. 
-        field_names = ["train/loss/loss", "val/loss/loss"]
-        active_diags = config.get("diagnostics", [])
-        field_registry = get_fields()
-      
-        for diag_name in active_diags:
-            #what does this return if doesn't find it? 
-            get_fields_fn = field_registry.get(diag_name)
- 
-            if get_fields_fn is not None:
-                 # Call diagnostic's fieldname generator (lambda or custom)
-                new_fields = get_fields_fn(config)
-                if isinstance(new_fields, str):
-                    new_fields = [new_fields]
-                field_names+=[f"{diag_name}/{f}" for f in new_fields]
-            else: 
-                print(f"[Warning] Diagnostic '{diag_name}' has no field generator — skipping fields.")
-        return field_names
+
        
     def _init_csv_logger(self):
         #maybe check for overwrites? 
@@ -119,13 +102,8 @@ class Logger:
         self.csv_writer = csv.DictWriter(self.csv_file, fieldnames = self.field_names, extrasaction = "ignore") #the  ignore allows dyanamic row addition. 
         self.csv_writer.writeheader()
 
-    def log_scalar(self, name, value, step, step_type = "epoch"):
-        #NOTE: If step_type is epoch, then step = number of epochs. 
-        #WANDB only considers STEPS not epochs. 
-        #only flush steps to wandb. 
-        #if step_type = "step":
-        #TODO: make sur4e this works here with everything being step. That means things aren't being added to everything else no? Fix this.
-        #print(f"name: {name}, step: {step}")
+    def log_scalar(self, name, value, step):
+        #just logs to wandb. 
         self._flush_step(name, value, step)
         
         #if want to REMOVE dynamic addition - remove this if statement and the dictionary will raise a value error. 
@@ -152,7 +130,8 @@ class Logger:
             #print("logging epoch")
             wandb.log(row, step=step)
     def _flush_step(self, name, value, step):
-        wandb.log({name: value}, step = step)
+        if self.use_wandb:
+            wandb.log({name: value}, step = step)
     def flush(self, step=None):
         step = step or self._last_step
         if step is None: 
@@ -189,6 +168,8 @@ class Logger:
             wandb.log({name: wandb.Image(str(path))}, step = step)
 
     def save_checkpoint(self, model, epoch):
+        if not self.save_checkpoints:
+            return
         check_path = self.run_dir / "checkpoints"
         check_path.mkdir(parents=True, exist_ok = True)
         
@@ -203,6 +184,8 @@ class Logger:
             wandb.log_artifact(artifact, aliases = [f"epoch_{epoch}"])
 
     def save_artifact(self, array, name):
+        if not self.save_artifacts:
+            return
         path_arr = self.run_dir / "artifacts" 
         
         path_arr.mkdir(parents=  True, exist_ok = True)
@@ -222,6 +205,8 @@ class Logger:
 
 
     def save_array(self, array, name):
+        if not self.save_artifacts:
+            return 
         path = self.run_dir / f"{name}.npy"
         np.save(path, array)
         if self.use_wandb:

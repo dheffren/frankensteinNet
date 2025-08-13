@@ -100,8 +100,8 @@ def CKA(X, Y):
     assert(Y.shape[0] == n)
     Kx = X@ X.T
     Ky = Y@ Y.T
-    ones = torch.ones((n,1))
-    H = torch.identity(n) - 1/n * ones@ones.T #i've used this one before? 
+    ones = torch.ones((n,1), device = X.device)
+    H = torch.eye(n, device = X.device) - 1/n * ones@ones.T #i've used this one before? 
     Kxh = H@Kx@H
     Kyh = H@Ky @ H
     #Note: All of the above is the same as basically just subtrac cting the mean from each column. 

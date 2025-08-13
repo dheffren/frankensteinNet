@@ -2,8 +2,8 @@ import torch
 
 from .registry import register_diagnostic
 from .helper import * 
-@register_diagnostic("latent_norms") 
-def latent_norms(model, val_loader, logger, epoch, cfg, meta, **kwargs):
+@register_diagnostic("latent_norms", default_trigger = "epoch", default_every = 5) 
+def latent_norms(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
     """
     Computes PCA over the latent vectors in the model output and logs explained variance ratios.
     Optionally logs a 2D PCA scatter plot.
@@ -27,14 +27,16 @@ def latent_norms(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     
     outputDict = {
     }
+    #TODO: Naming issue. 
     for layer in layers:
         latents, _ = compute_latent_batch(model, val_loader, layer, seed, num_latents)
         if save_latents: 
             logger.save_artifact(latents.detach().cpu().numpy(), f"{layer}/embed_epoch_{epoch}")
         norms = latents.norm(dim=1)
         output_dict = {f"{layer}/norm_mean": norms.mean().item(),
-        f"{layer}/norm_std": norms.std().item(),
-        f"{layer}/norm_max": norms.max().item()}
+        #f"{layer}/norm_std": norms.std().item(),
+       # f"{layer}/norm_max": norms.max().item()
+       }
         outputDict.update(output_dict)
-        
+    log_scalars(name, trigger, outputDict, step, logger)
     return outputDict

@@ -126,8 +126,8 @@ def make_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], 
 def make_dual_ae_loss(recon_type: str = "mse", **extra) -> Callable[[Callable, Any], Dict[str, torch.Tensor]]:
     if extra:
         warnings.warn(f"[make_ae_loss] Unused keys in loss config: {list(extra.keys())}")
-    recon_fn = relative_mse_loss if recon_type == "mse" else bce_loss
-    common_fn = relative_mse_loss
+    recon_fn = mse_loss if recon_type == "mse" else bce_loss
+    common_fn = mse_loss
     def _loss_fn(out, targets, lr1, lr2, lc, lo1, lo2):
      
         x1 = targets["recon_target"]["x1"]

@@ -1,7 +1,7 @@
 class HookManager:
     
     def __init__(self):
-        self.hooks = {"epoch": [], "step": [], "begin":[], "end":[]}
+        self.hooks = {"epoch": [], "step": [], "begin":[], "end":[], "post_run":[]}
 
     def register(self, callback, trigger="epoch", every=1, condition=None, name = None):
         hook = Hook(name, callback, trigger, every, condition)
@@ -10,7 +10,7 @@ class HookManager:
     def call(self, trigger_point, trigger="epoch", **kwargs):
         for hook in self.hooks[trigger]:
             if hook.should_run(trigger_point):
-                hook.callback(**kwargs)
+                hook.callback(hook.name, trigger, **kwargs)          
     def list_hooks(self, trigger):
         for hook in self.hooks[trigger]:
             print(f"Hook: {hook.get_name()}\n")

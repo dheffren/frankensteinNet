@@ -1,4 +1,4 @@
-from .registry import get_diagnostics, get_fields
+from .registry import get_diagnostics
 import importlib
 import os
 import pathlib

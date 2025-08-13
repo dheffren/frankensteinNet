@@ -4,17 +4,25 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from .registry import register_diagnostic # Your decorator
 import PIL.Image
-from visualization import plot_pca_scree, plot_pca_component, plot_pca_2d_scatter, plot_pca_3d_scatter
+from diagnostics.visualization import plot_pca_scree, plot_pca_component, plot_pca_2d_scatter, plot_pca_3d_scatter
 import io
 from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
 def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, external_pca_basis, relative_basis, do_plot, step, meta = None):
     #%TODO: Fix global naming vs local naming. 
     outputDict = {}
-    if external_pca_basis is not None and external_pca_basis != (None, None): 
+    print("External pca basis: ", external_pca_basis)
+    calledHere = False
+    var=  isinstance(external_pca_basis, tuple)
+    print(var)
+    if var:
+        print(isinstance(external_pca_basis[0], np.ndarray))
+    if (isinstance(external_pca_basis, tuple) and isinstance(external_pca_basis[0], np.ndarray)):
+    #if external_pca_basis is not None and external_pca_basis != (None, None): 
         components, pca_mean = external_pca_basis
         projected = (latents - pca_mean) @  components.T
         logger.save_artifact(projected, f"{layer}/projectedExt/projected_epoch_{epoch}") #this one is special - do we not need to do this in the external case?
+        calledHere = True
     else: 
 
         pca = PCA(n_components=n_components)
@@ -36,7 +44,10 @@ def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, extern
             outputDict[f"{layer}/pc_std/{i}"] = np.std(pc)
         #save the weights and the components.  
         #this is saving on the prerun. 
+        print("got to meta")
+      
         if meta is not None:
+            print("in meta")
             meta[f"{layer}/mean"] = pca_mean
             meta[f"{layer}/components"] = components
       
@@ -106,3 +117,8 @@ def compute_latent_batch(model, val_loader, layer, seed, num_samples = 12):
             labels= targets["labels_y"].detach().cpu()
     return latents, labels
 
+def log_scalars(name, trigger, outputDict, step, logger):
+    for k, v in outputDict.items():
+        #changed step_type to step, since we only want to log wandb stuff as steps. This means my logs will be per step as well. 
+        #TODO: Adjust naming scheme
+        logger.log_scalar(f"{name}/{trigger}/{k}", v, step=step)

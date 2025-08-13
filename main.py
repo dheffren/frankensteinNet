@@ -8,7 +8,7 @@ from train import Trainer
 from runManager import RunManager
 from logger import Logger
 from pathlib import Path
-from analyze import plot_all_metrics, plot_learning_rate, plot_loss_curves
+
 import argparse
 import random
 import numpy as np
@@ -74,6 +74,7 @@ bundle = setup_experiment(config)
 trainer = Trainer(bundle.model, bundle.optimizer, bundle.scheduler, bundle.dataloaders, bundle.logger, bundle.hook_manager, bundle.metadata, config)
 trainer.train()
 
-# Plot figures and get summary stats. 
-# TODO: Save in plots instead? 
-plot_all_metrics(bundle.run_manager.run_dir)
+bundle.hook_manager.call( trigger = "post_run", trigger_point = 1, run_dir = bundle.run_manager.run_dir
+                                   )
+
+

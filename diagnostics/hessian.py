@@ -4,10 +4,11 @@ from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
 from .metrics import lanczos, hvp
 from .registry import register_diagnostic
-from .helper import log_scalars
+
 import torch
-@register_diagnostic("hessian", default_trigger = "epoch", default_every = 5) 
-def hessian(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
+from utils.hookHelpers import * 
+@register_diagnostic("hessian", default_trigger = Trigger.EVAL_END, default_every = 5, priority = 0) 
+def hessian(ctx: StepCtx, S: Services):
     """Computes PCA over the latent vectors in the model output and logs explained variance ratios.
     Optionally logs a 2D PCA scatter plot.
 
@@ -18,7 +19,12 @@ def hessian(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **
         - plot (bool): whether to generate a 2D PCA scatter plot (default: True)
 """
     #TODO: Add per label details here. 
-    
+    model = S.model
+    device = S.device
+    val_loader = S.val_loader
+    epoch = ctx.epoch
+    cfg = S.cfg
+
     diag_cfg = cfg.get("diagnostics_config", {})
     layers = diag_cfg.get("layer_pca_layers", ["latent"])
     n_components = diag_cfg.get("layer_pca_components", 5)
@@ -42,14 +48,16 @@ def hessian(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **
     Hv_op = Hv_op_factory(model, batch, epoch)
     #TODO: Set up m as a hyperparameter. 
     eigenvals = lanczos(Hv_op, dim, m = 30, device = cfg["device"], seed = seed)
-    print("eigenvals: ", eigenvals)
+    
     k = min(5, len(eigenvals))
     topk = torch.topk(eigenvals, k).values
     for i in range(k):
         outputDict[f"eigenval_{k-i}"] = topk[i]
-    log_scalars(name, trigger, outputDict, step, logger)
-    return outputDict
-
+    dictOutput = {
+        "metrics": outputDict, 
+        "artifacts": []
+    }
+    return dictOutput
 
 def Hv_op_factory(model, batch, epoch):
     def Hv_op(v):

@@ -9,6 +9,7 @@ import io
 from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
 from .helper import *
+from utils.hookHelpers import *
 def pca_field_fn(cfg: dict) -> list[str]:
     dcfg = cfg.get("diagnostics_config", {})
     keys     = dcfg.get("layer_pca_layers", ["latent"])
@@ -22,8 +23,8 @@ def pca_field_fn(cfg: dict) -> list[str]:
     # Cartesian product:  key/field
     return [f"{k}/{f}" for k in keys for f in fields]
 
-@register_diagnostic(name = "layer_pca", default_trigger = "epoch", default_every = 5) 
-def layer_pca(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
+@register_diagnostic(name = "layer_pca", default_trigger = Trigger.EPOCH_END, default_every = 5, priority = 0) 
+def layer_pca(ctx: StepCtx, S: Services):
     """
     Computes PCA over the latent vectors in the model output and logs explained variance ratios.
     Optionally logs a 2D PCA scatter plot.
@@ -36,6 +37,10 @@ def layer_pca(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, 
 S
     #TODO: Add per label details here. 
     """
+    model = S.model
+    val_loader = S.val_loader
+    cfg = S.cfg
+    meta = S.meta
     diag_cfg = cfg.get("diagnostics_config", {})
     layers = diag_cfg.get("layer_pca_layers", ["latent"])
     n_components = diag_cfg.get("layer_pca_components", 5)
@@ -46,19 +51,23 @@ S
     
     outputDict = {
     }
-    
+    artifacts = []
     for layer in layers: 
        
         latents, labels = compute_latent_all(model, val_loader, layer, max_batches)
-
-        _, output_dict = run_pca_analysis(latents, labels, layer, logger, epoch, n_components, None, None,  do_plot, step, meta = meta)
-       
+        #UPDATES METADATA. 
+        _, output_dict, artifactList = run_pca_analysis(latents, labels, layer,  n_components,external_pca_basis =  None,relative_basis =  None,  do_plot = do_plot, meta = meta)
+        artifacts = artifacts + artifactList
         outputDict.update(output_dict)
-    log_scalars(name, trigger,outputDict, step, logger)
-    return outputDict
+    
+    return {"metrics": outputDict, "artifacts": artifactList}
 
-@register_diagnostic(name = "global_pca", default_trigger = "epoch", default_every = 5) #TODO: Field function not right/used. 
-def global_pca(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
+@register_diagnostic(name = "global_pca", default_trigger = Trigger.EPOCH_END, default_every = 5, priority = 0) 
+def global_pca(ctx: StepCtx, S: Services):
+    model = S.model
+    val_loader = S.val_loader
+    cfg = S.cfg
+    meta = S.meta
     diag_cfg = cfg.get("diagnostics_config", {})
     layers = diag_cfg.get("layer_pca_layers", ["latent"])
     n_components = diag_cfg.get("layer_pca_components", 5)
@@ -70,12 +79,13 @@ def global_pca(name, trigger, model, val_loader, logger, epoch, cfg, meta, step,
     
     outputDict = {
     }
-    
+    artifacts = []
     for layer in layers:
         #TODO: fix this later - will need to do something more reproducible. 
         mean, components = meta.get(f"{layer}/mean", None), meta.get(f"{layer}/components", None)
         latent, labels = compute_latent_batch(model, val_loader, layer, seed, num_latents)
-        _, output_dict = run_pca_analysis(latent, labels, f"{layer}", logger, epoch, n_components, (components, mean), None,  do_plot, step, meta = meta)
+        _, output_dict, artifactList= run_pca_analysis(latent, labels, f"{layer}", n_components, external_pca_basis = (components, mean), relative_basis = None,  do_plot = do_plot,  meta = meta)
+        artifacts = artifacts + artifactList
         outputDict.update(output_dict)
-    log_scalars(name, trigger,outputDict, step, logger)
+  
     return outputDict

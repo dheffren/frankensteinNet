@@ -4,10 +4,10 @@ from .registry import register_diagnostic
 from utils.flatten import flatten, safe_keyname
 from utils.fixedBatch import get_fixed_batch
 from .helper import *
-
+from utils.hookHelpers import *
 #TODO: Automatic field naming isn't working here - using dynamic. It works for now, but not intended. I think maybe ALL field naming being dynamic would be better. 
-@register_diagnostic(name = "jacobian_norm_diag", default_trigger="epoch", default_every=5)
-def jacobian_norm_diag(name, trigger, model, val_loader, logger, epoch, cfg, meta,step,  **kwargs):
+@register_diagnostic(name = "jacobian_norm_diag", default_trigger = Trigger.EPOCH_END, default_every=5, priority = 0)
+def jacobian_norm_diag(ctx: StepCtx, S: Services):
     #TODO: Fix this so the things it's "calling" are in this file insetad of in that suffix file. 
     """
     Note: 
@@ -15,6 +15,10 @@ def jacobian_norm_diag(name, trigger, model, val_loader, logger, epoch, cfg, met
     Inputs for each. 
     TODO: Need to require gradients so this will work - more problems. 
     """
+    model = S.model
+    val_loader = S.val_loader
+    cfg = S.cfg
+
     dcfg = cfg.get("diagnostics_config", {})
 
     pairs = dcfg.get("jacobian_norm_diag_pairs", [])
@@ -71,6 +75,5 @@ def jacobian_norm_diag(name, trigger, model, val_loader, logger, epoch, cfg, met
                 #print("here")
             except Exception as e:
                 print(f"[JacobianDiag] Failed for {pair}/{suffix}: {e}")
-    #LOG HERE: Don't return output dict. 
-    log_scalars(name, trigger,outputDict, step, logger)
-    return outputDict
+    
+    return {"metrics":outputDict}

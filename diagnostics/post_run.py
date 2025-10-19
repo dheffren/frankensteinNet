@@ -8,7 +8,7 @@ import os
 import numpy as np
 from sklearn.decomposition import PCA
 from .registry import register_diagnostic
-
+from utils.hookHelpers import * 
 def load_all_results(pattern="runs/*/metrics.csv"):
     dfs = []
     for path in glob.glob(pattern):
@@ -367,13 +367,14 @@ def plot_latent_norms(metrics_path, save_dir = None, show = False):
     if show:
         plt.show()
 
-@register_diagnostic("plot_metrics", default_every = 1, default_trigger = "post_Run")
-def plot_all_metrics(name, trigger, run_dir):
+@register_diagnostic("plot_metrics", default_every = 1, default_trigger = Trigger.TRAIN_END, priority = 0)
+def plot_all_metrics(ctx: StepCtx, S: Services):
     """
     Loads metrics from the run directory and generates default plots.
     #TODO: Make plot all metrics automatic for all things I'm trying to track. 
+    #TODO: INtegrate with Wandb, allow running at evaluation exclusively as well. 
     """
-
+    run_dir = S.run_dir
     run_path = Path(run_dir)
     metrics_path = run_path / "metrics.csv"
     print("running register diagn ostic") 

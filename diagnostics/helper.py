@@ -8,20 +8,20 @@ from diagnostics.visualization import plot_pca_scree, plot_pca_component, plot_p
 import io
 from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
-def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, external_pca_basis, relative_basis, do_plot, step, meta = None):
+def run_pca_analysis(latents, labels, layer, n_components, external_pca_basis, relative_basis, do_plot, meta = None):
     #%TODO: Fix global naming vs local naming. 
     outputDict = {}
-    print("External pca basis: ", external_pca_basis)
+    artifactList = []
     calledHere = False
     var=  isinstance(external_pca_basis, tuple)
-    print(var)
+  
     if var:
         print(isinstance(external_pca_basis[0], np.ndarray))
     if (isinstance(external_pca_basis, tuple) and isinstance(external_pca_basis[0], np.ndarray)):
     #if external_pca_basis is not None and external_pca_basis != (None, None): 
         components, pca_mean = external_pca_basis
         projected = (latents - pca_mean) @  components.T
-        logger.save_artifact(projected, f"{layer}/projectedExt/projected_epoch_{epoch}") #this one is special - do we not need to do this in the external case?
+        artifactList.append({"kind":"bytes", "key": f"{layer}/projectedExt", "data":projected, "split": "val"})
         calledHere = True
     else: 
 
@@ -52,15 +52,16 @@ def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, extern
             meta[f"{layer}/components"] = components
       
         #if that first run, mean-1. 
-        logger.save_artifact(components, f"{layer}/weights/weights_epoch_{epoch}")
-        logger.save_artifact(pca_mean, f"{layer}/mean/mean_epoch_{epoch}")
-        #save projected and projected external in different spots. 
-
-        logger.save_artifact(projected, f"{layer}/projected/projected_epoch_{epoch}") #this one is special - do we not need to do this in the external case?
+        artifactList.append({"kind":"bytes", "key": f"{layer}/weights", "data":components, "split": "val"})
+        artifactList.append({"kind":"bytes", "key": f"{layer}/mean", "data":pca_mean, "split": "val"})
+        artifactList.append({"kind":"bytes", "key": f"{layer}/projected", "data":projected, "split": "val"})
+        
         fig = plot_pca_scree(n_components, explained_variance, cum_var, layer)
-        logger.save_plot(fig, f"{layer}/scree/scree_epoch_{epoch}.png", step)
+        artifactList.append({"kind":"figure", "key": f"{layer}/scree", "fig":fig, "split": "val"})
+        
         fig = plot_pca_component(n_components, components)
-        logger.save_plot(fig, f"{layer}/basis/basis_epoch_{epoch}.png", step)
+        artifactList.append({"kind":"figure", "key": f"{layer}/basis", "fig":fig, "split": "val"})
+        
     #saving the projected part. 
     
     #track latent shift
@@ -71,11 +72,12 @@ def run_pca_analysis(latents, labels, layer, logger, epoch, n_components, extern
     
     if do_plot and n_components >= 2:
         fig = plot_pca_2d_scatter(projected, labels, layer)
-        logger.save_plot(fig, f"{layer}/pca_scatter_2d/pca_scatter_2d_epoch_{epoch}.png", step)
+        artifactList.append({"kind":"figure", "key": f"{layer}/pca_scatter_2d", "fig":fig, "split": "val"})
+        
     if do_plot and n_components>=3:
         fig = plot_pca_3d_scatter(projected, labels, layer)
-        logger.save_plot(fig, f"{layer}/pca_scatter_3d/pca_scatter_3d_epoch_{epoch}.png", step)
-    return projected, outputDict
+        artifactList.append({"kind":"figure", "key": f"{layer}/pca_scatter_3d", "fig":fig, "split": "val"})
+    return projected, outputDict, artifactList
 
         
 def compute_latent_all(model, val_loader, layer, max_batches):
@@ -116,9 +118,3 @@ def compute_latent_batch(model, val_loader, layer, seed, num_samples = 12):
         if targets.get("labels_y", None) is not None:
             labels= targets["labels_y"].detach().cpu()
     return latents, labels
-
-def log_scalars(name, trigger, outputDict, step, logger):
-    for k, v in outputDict.items():
-        #changed step_type to step, since we only want to log wandb stuff as steps. This means my logs will be per step as well. 
-        #TODO: Adjust naming scheme
-        logger.log_scalar(f"{name}/{trigger}/{k}", v, step=step)

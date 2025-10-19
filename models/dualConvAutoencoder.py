@@ -155,8 +155,8 @@ class DualConvolutionalAutoencoder(BaseModel):
         #print("C2: ", c2.shape)
 
         #Twisted architecture here. 
-        uc1 = torch.cat([u,c2], dim=-1)
-        uc2 = torch.cat([v,c1], dim =-1)
+        uc1 = torch.cat([u,c1], dim=-1)
+        uc2 = torch.cat([v,c2], dim =-1)
         #normal arch
         #uc1 = torch.cat([u,c1], dim = -1)
         #uc2 = torch.cat([v, c2], dim=-1)

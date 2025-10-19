@@ -2,7 +2,7 @@ import torch
 from .suffix_fn_registry import get_suffix_fn, is_pairwise_suffix
 from .registry import register_diagnostic
 from utils.flatten import flatten
-from .helper import log_scalars
+
 #TODO: More gneeral? 
 suffix_fns = {
     "mean": lambda t: t.mean().item(),
@@ -10,13 +10,13 @@ suffix_fns = {
     "min":  lambda t: t.min().item(),
     "max":  lambda t: t.max().item(),
 }
-
+"""
 @register_diagnostic()
 def tensor_stats_diag(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
     """
-    Logs mean, std, min, max of a specified tensor in model output.
-    Requires `cfg["diagnostics"]["tensor_stats_key"]` to be set.
-    """
+    #Logs mean, std, min, max of a specified tensor in model output.
+    #Requires `cfg["diagnostics"]["tensor_stats_key"]` to be set.
+"""
     diag_cfg = cfg.get("diagnostics_config", {})
     keys = diag_cfg.get("tensor_stats_diag_keys", [])
     suffixes = diag_cfg.get("tensor_stats_diag_suffixes", list(suffix_fns))
@@ -50,3 +50,4 @@ def tensor_stats_diag(name, trigger, model, val_loader, logger, epoch, cfg, meta
             outputDict[f"{k}/{suffix}"] = val
     log_scalars(name, trigger, outputDict, step, logger)
     return outputDict
+"""

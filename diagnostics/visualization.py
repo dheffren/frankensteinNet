@@ -21,7 +21,7 @@ def make_reconstruction_plot(x, x_recon, epoch, num_images=8, meta = None):
     fig.suptitle(f"Reconstructions — Epoch {epoch}")
     plt.tight_layout()
     return fig
-def make_dual_reconstsruction_plot(x1,x1_recon, x2, x2_recon, epoch, num_images= 8, meta = None):
+def make_dual_reconstruction_plot(x1,x1_recon, x2, x2_recon, epoch, num_images= 8, meta = None):
     #already renormalized, all need to do her
     
    # x1 = renormalize_data(x1)

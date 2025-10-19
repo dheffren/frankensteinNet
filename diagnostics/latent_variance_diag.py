@@ -1,5 +1,6 @@
 import torch
 from .registry import register_diagnostic
+"""
 @register_diagnostic()
 def latent_variance_diag(model, val_loader, logger, epoch, cfg):
     model.eval()
@@ -16,3 +17,4 @@ def latent_variance_diag(model, val_loader, logger, epoch, cfg):
     DIAGNOSTIC_FIELD_REGISTRY["latent_variance_diag"] = [
         f"diag/latent_variance"
     ]
+    """

@@ -1,12 +1,19 @@
-from diagnostics.visualization import make_reconstruction_plot, make_dual_reconstsruction_plot
+from diagnostics.visualization import make_reconstruction_plot, make_dual_reconstruction_plot
 import torch
 
 # fn(self.model, self.val_loader, self.logger, epoch, self.config)
 from .registry import register_diagnostic
 from utils.flatten import flatten
 from utils.fixedBatch import get_fixed_batch
-@register_diagnostic("recon", default_trigger = "epoch", default_every = 1)
-def log_reconstruction_plot(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
+from utils.hookHelpers import *
+@register_diagnostic("recon", default_trigger = Trigger.EPOCH_END, default_every = 1, priority = 0)
+def log_reconstruction_plot(ctx:StepCtx, S:Services):
+    model = S.model
+    val_loader = S.val_loader
+    cfg = S.cfg
+    epoch = ctx.epoch
+    meta = S.meta
+  
     #reconstruction plot diagnostic. 
     model.eval()
     #maybe see if this should ahve a default or not? 
@@ -14,6 +21,7 @@ def log_reconstruction_plot(name, trigger, model, val_loader, logger, epoch, cfg
     diag_cfg = cfg.get("diagnostics_config", {})
     num_images = diag_cfg.get("num_recon_samples", 8)
     seed = diag_cfg.get("fixed_batch_seed", 32)
+    artifactList = []
     # Grab a batch of data
     #Note: Designed so this is agnostic to the type of data passed in. 
     #always takes first batch of validation (and same samples)
@@ -22,7 +30,8 @@ def log_reconstruction_plot(name, trigger, model, val_loader, logger, epoch, cfg
         inputs, target = model.prepare_input(batch)
         out = model(**inputs)
     fig = handle_reconstructions(target, out,  epoch, num_images, meta)
-    logger.save_plot(fig, f"{name}/{trigger}/{epoch}.png", step)
+    artifactList.append({"kind":"figure", "key": "recon", "fig":fig, "split": "val"})
+    return {"metrics": None, "artifacts": artifactList}
 def handle_reconstructions(target, out, epoch, num_images, meta):
     x = target["recon_target"]
     recon = out["recon"]
@@ -40,6 +49,6 @@ def handle_reconstructions(target, out, epoch, num_images, meta):
         return make_reconstruction_plot(x["x"], recon["x"].cpu(), epoch, num_images, meta)
     elif len(x.keys()) == 2 and len(recon.keys()) == 2:
         
-        return make_dual_reconstsruction_plot(x["x1"], recon["x1"].cpu(), x["x2"], recon["x2"].cpu(), epoch, num_images, meta)
+        return make_dual_reconstruction_plot(x["x1"], recon["x1"].cpu(), x["x2"], recon["x2"].cpu(), epoch, num_images, meta)
     else: 
         raise ValueError("x and recon have the wrong format")

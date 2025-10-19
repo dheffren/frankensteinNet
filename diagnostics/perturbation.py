@@ -5,9 +5,18 @@ from utils.fixedBatch import get_fixed_batch
 import numpy as np
 import matplotlib.pyplot as plt
 from .metrics import CKA
-from .helper import log_scalars
-@register_diagnostic("loss_surface_heatmap", default_trigger = "epoch", default_every = 5)
-def loss_surface_heatmap(name, trigger, model, val_loader, logger, epoch, cfg, meta,step, lr, **kwargs):
+
+from utils.hookHelpers import * 
+@register_diagnostic("loss_surface_heatmap", default_trigger = Trigger.EPOCH_END, default_every = 5, priority = 0)
+def loss_surface_heatmap(ctx: StepCtx, S: Services):
+    model = S.model
+    val_loader = S.val_loader
+    cfg = S.cfg
+    meta = S.meta
+    step = ctx.step
+    lr = ctx.lr
+    name = "loss_heatmap"
+    epoch = ctx.epoch
     diag_cfg = cfg.get("diagnostics_config", {})
     layers = diag_cfg.get("layer_pca_layers", ["latent"])
     n_components = diag_cfg.get("layer_pca_components", 5)
@@ -38,13 +47,14 @@ def loss_surface_heatmap(name, trigger, model, val_loader, logger, epoch, cfg, m
     raw1 = make_random_direction(model)
     raw2 = make_random_direction(model)
     v1, v2 = qr_two(raw1, raw2) #two orthonormal vectors. '
+
     
     half = n//2
     lossGrid = torch.zeros(n, n)
   
     epsilonhalf = (torch.arange(0, half+1)/half)*eps
     epsilons = torch.cat([-1*(torch.flip(epsilonhalf[1:], (0,))), epsilonhalf])
-   
+    artifactList = []
     for i in range(n):
         for j in range(n):
    
@@ -69,7 +79,8 @@ def loss_surface_heatmap(name, trigger, model, val_loader, logger, epoch, cfg, m
 
     # GRAPH THE HEATMAP
     fig = graph_heatmap(lossGrid, epsilons, epsilons)
-    logger.save_plot(fig, f"{name}/{trigger}/{epoch}.png", step)
+    
+    artifactList.append({"kind":"figure", "key": f"{name}", "fig":fig, "split": "val"})
     #Draw reconstructions in same grid format. - can't do with dual structure. 
 
 
@@ -119,12 +130,20 @@ def input_perturb(model, val_loader, logger, epoch, cfg, meta, **kwargs):
     However, this is teh same as computing the operator norm of the jacobian. 
 
     """
-@register_diagnostic("weight_perturb", default_trigger = "epoch", default_every = 5) 
-def weight_perturb(name, trigger, model, val_loader, logger, epoch, cfg, meta,step,  **kwargs):
+@register_diagnostic("weight_perturb", default_trigger = Trigger.EPOCH_END, default_every = 5, priority = 0) 
+def weight_perturb(ctx: StepCtx, S: Services):
     """
     Goal: Estimate lipschitz constant of the encoder w.r.t the weights. This tells us something about how "smooth" 
     the network outputs vary with respect to the weights.  
     """
+    model = S.model
+    val_loader = S.val_loader
+    cfg = S.cfg
+    meta = S.meta
+    step = ctx.step
+    lr = ctx.lr
+    name = "weight_perturb"
+    epoch = ctx.epoch
     diag_cfg = cfg.get("diagnostics_config", {})
     layers = diag_cfg.get("layer_pca_layers", ["latent"])
     n_components = diag_cfg.get("layer_pca_components", 5)
@@ -148,7 +167,7 @@ def weight_perturb(name, trigger, model, val_loader, logger, epoch, cfg, meta,st
     out = model(**inputsbase)
 
     out_base = dict(flatten(out))
-
+    artifactList = []
     loss_dict_base = model.compute_loss_helper(out, targetbase, epoch)
     base_loss = loss_dict_base["loss"].item()
     for direction_type in direction_types: 
@@ -179,8 +198,8 @@ def weight_perturb(name, trigger, model, val_loader, logger, epoch, cfg, meta,st
        
             #TODO: Check equality or original and reconstruction. 
     #heatmap = compute_loss_surface_heatmap(model, batch, directions[])
-    log_scalars(name, trigger, outputDict, step, logger)
-    return outputDict
+    
+    return {"metrics":outputDict, "artifacts": artifactList}
 
 def latent_analysis(out, out_base, layer_name, epsilon, dir, tau = 1e-12,):
     """

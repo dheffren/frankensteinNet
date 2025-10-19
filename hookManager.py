@@ -1,30 +1,45 @@
+from enum import Enum, auto
+from dataclasses import dataclass, replace
+from typing import Any, Callable
+from utils.hookHelpers import * 
 class HookManager:
     
     def __init__(self):
-        self.hooks = {"epoch": [], "step": [], "begin":[], "end":[], "post_run":[]}
+        self._hooks: dict[Trigger, list[Hook]] = {t: [] for t in Trigger}
+    def register(self, name, callback, trigger:Trigger, every=1, condition=None, priority = 0):
+        hook = Hook(name, callback, trigger, every, condition, priority)
+        self._hooks[trigger].append(hook)
+        self._hooks[trigger].sort(key=lambda h: h.priority) # Is this necessary? 
+        #sort hooks. 
 
-    def register(self, callback, trigger="epoch", every=1, condition=None, name = None):
-        hook = Hook(name, callback, trigger, every, condition)
-        self.hooks[trigger].append(hook)
-
-    def call(self, trigger_point, trigger="epoch", **kwargs):
-        for hook in self.hooks[trigger]:
-            if hook.should_run(trigger_point):
-                hook.callback(hook.name, trigger, **kwargs)          
+    def call(self, trigger: Trigger, ctx: StepCtx, services: Services, **kwargs):
+        #TODO: See what adding hook output does. 
+        #TODO: If services is better, remove kwargs. 
+        results = []
+        for hook in self._hooks[trigger]:
+            if hook.should_run(ctx):
+                out = hook.callback(ctx, services)    
+                if out: results.append((hook.name, out)) 
+        return results
+    
     def list_hooks(self, trigger):
         for hook in self.hooks[trigger]:
             print(f"Hook: {hook.get_name()}\n")
+@dataclass
 class Hook:
-    def __init__(self, name, callback, trigger="epoch", every=1, condition=None):
-        self.name = name
-        self.callback = callback
-        self.trigger = trigger  # "epoch" or "step"
-        self.every = every
-        self.condition = condition  # Optional function(step, ...) -> bool
+    name: str
+    callback: Callable
+    trigger: Trigger
+    every: int = 1
+    condition: Callable[[StepCtx, Services], bool] | None = None
+    priority: int = 0  # lower runs first
 
-    def should_run(self, trigger_point):
-        if self.condition:
-            return self.condition(trigger_point)
-        return trigger_point % self.every == 0
+    def should_run(self, ctx: StepCtx):
+        #TODO: Understand this right here! See the ramifications. 
+        if self.condition and not self.condition(ctx, None):
+            return False
+        #Use epoch for epoch-level, step for step-level, simple rule. 
+        idx = ctx.step if ctx.phase == "train" and ctx.batch_idx >=0 else ctx.epoch # what phases are there? 
+        return (idx% max(self.every, 1)) == 0
     def get_name(self):
         return self.name

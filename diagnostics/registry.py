@@ -1,9 +1,7 @@
 #GLOBAL VALUE. 
-
-#TODO: Create more diagnostics. Add to config. 
 DIAG_REGISTRY = {}
 
-def register_diagnostic(name = None, default_trigger = "epoch", default_every = 1):
+def register_diagnostic(name, default_trigger, default_every, priority):
     #If field_fn omitted assumes diagnostic will "discover" it's own fields at runtime. 
     def decorator(fn):
         diag_name = name or fn.__name__

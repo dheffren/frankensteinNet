@@ -1,6 +1,7 @@
 from .registry import register_diagnostic
 import torch
 #TODO: Make it so can use same method for epoch and step? OR waste of time? Would need to rework hooks as well. 
+"""
 @register_diagnostic("epoch",default_trigger = "epoch", default_every = 1)
 def log_epoch(name, trigger, step,  logger, epoch,  **kwargs):
        # print("logging ep")
@@ -28,7 +29,7 @@ def save_checkpoints(name, trigger, step, model,   logger, epoch, **kwargs):
 @register_diagnostic("learning_rate", default_trigger = "epoch", default_every = 1)
 def log_learning_rate(name, trigger, step, logger, lr,**kwargs):
     logger.log_scalar("lr", lr, step)
-
+"""
 
 
 

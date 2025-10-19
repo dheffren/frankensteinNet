@@ -1,4 +1,56 @@
-# General and Modular framework for training and Analyzing neural networks
+# FrankensteinNet - General Modular framework for training and evaluating neural networks
+## 1. Problem Statement, Goals. 
+Solves the problem of having to spend so much time rewriting code, adding sloppy extensions, not having proper metrics or determinism behavior, to focus on experimentation. 
+
+### Goals: 
+Minimize friction allowing modularity and customizability. 
+Metric tracking. 
+Configs -> decisions. 
+Can easily add new features. 
+
+## Modules
+### Trainer
+Responsibilities: Orchestrates epochs/steps, calls hooks. Shouldn't be edited for any reason. 
+'''python
+class Trainer:
+    def __init__(self, model, optimizer, scheduler, dataloaders, logger, hook_manager, meta, config):
+    def train(self):
+    def train_epoch(self, epoch): # called from train\
+'''
+
+### Logger
+Responsibilities: Saves all metrics, visuals, and data snapshots. Has wandb integration. Don't specify diagnostics here. 
+
+### Setup
+Responsibilities: Sets up experiments with device, dataloaders, model, optimizer, scheduler, hook manager, run manager, and logger. Don't talk about details here, refer to the constructors of each thing. 
+
+### Models
+Responsibilities: Specify all the details of the model via a class inheriting nn.module. Automatically registered. Specified in config. 
+'''python
+class ModelExample(nn.Module):
+    def __init__(self, model_cfg, loss_fn, hyp_sched,  metadata, device = "cpu", track_grad = True):
+    def forward(self, **kwargs): #output a dict of dicts. 
+    def compute_loss(self, batch, epoch): #
+    def compute_loss_helper(self, out, targets, epoch):
+    def prepare_input(self, batch): # call on batch to get input into right form.l 
+    def get_loss(self):
+'''
+### Data Pipeline
+Responsibilities: Builds normalizers for the dataset? Diveides into train test split. prepares the dataset for normalization. FLAWED. 
+### Datasets
+Responsibilities: Create/download the dataset, get it into the right format
+'''python
+class DatasetExample(nn.Module):
+    def __init__(self, root, train,  transform = None, BW = False, img_size= 128, amount = 2000):
+    def __getitem__(self, idx):
+'''
+
+### Diagnostics
+Responsibilities: Keep track of all the valuable metrics and information throughout training and testing. This is the heart of the project. Want this to be modular and simple. Includes visualizations. 
+'''python
+@register_diagnostic("hessian", default_trigger = "epoch", default_every = 5) 
+def hessian(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
+'''
 
 ## How to run training or evaluation
 

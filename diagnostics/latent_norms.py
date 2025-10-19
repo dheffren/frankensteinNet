@@ -2,8 +2,9 @@ import torch
 
 from .registry import register_diagnostic
 from .helper import * 
-@register_diagnostic("latent_norms", default_trigger = "epoch", default_every = 5) 
-def latent_norms(name, trigger, model, val_loader, logger, epoch, cfg, meta, step, **kwargs):
+from utils.hookHelpers import * 
+@register_diagnostic("latent_norms", default_trigger = Trigger.EPOCH_END, default_every = 5, priority = 0) 
+def latent_norms(ctx:StepCtx, S: Services):
     """
     Computes PCA over the latent vectors in the model output and logs explained variance ratios.
     Optionally logs a 2D PCA scatter plot.
@@ -16,6 +17,10 @@ def latent_norms(name, trigger, model, val_loader, logger, epoch, cfg, meta, ste
 
     #TODO: Add per label details here. 
     """
+    model = S.model
+    val_loader = S.val_loader
+    cfg = S.cfg
+
     diag_cfg = cfg.get("diagnostics_config", {})
     layers = diag_cfg.get("layer_pca_layers", ["latent"])
     n_components = diag_cfg.get("layer_pca_components", 5)
@@ -28,15 +33,17 @@ def latent_norms(name, trigger, model, val_loader, logger, epoch, cfg, meta, ste
     outputDict = {
     }
     #TODO: Naming issue. 
+    listArtifacts = []
     for layer in layers:
         latents, _ = compute_latent_batch(model, val_loader, layer, seed, num_latents)
         if save_latents: 
-            logger.save_artifact(latents.detach().cpu().numpy(), f"{layer}/embed_epoch_{epoch}")
+            listArtifacts.append({"kind":"bytes", "key": f"{layer}/embed", "data":latents.detach().cpu().numpy(), "split": "single"})
+            
         norms = latents.norm(dim=1)
         output_dict = {f"{layer}/norm_mean": norms.mean().item(),
         #f"{layer}/norm_std": norms.std().item(),
        # f"{layer}/norm_max": norms.max().item()
        }
         outputDict.update(output_dict)
-    log_scalars(name, trigger, outputDict, step, logger)
-    return outputDict
+    
+    return {"metrics":outputDict, "artifacts": listArtifacts}

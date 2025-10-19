@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from diagnostics import get_diagnostics
 from pathlib import Path
-
+from dataclasses import dataclass
 import inspect
 import yaml
 import sys
@@ -20,7 +20,35 @@ except ImportError:
 def redirect_stdout_stderr(run_dir):
     sys.stdout = open(run_dir / "stdout.log", "w")
     sys.stderr = open(run_dir / "stderr.log", "w")
+from typing import Dict, Any
+import os, tempfile, io
 
+def _flatten(d: Dict[str, Any], prefix: str = "") -> Dict[str, float]:
+    out = {}
+    for k, v in d.items():
+        k2 = f"{prefix}{k}" if prefix == "" else f"{prefix}/{k}"
+        if isinstance(v, dict):
+            out |= _flatten(v, k2)
+        else:
+            out[k2] = float(v)
+    return out
+@dataclass(frozen=True)
+class ArtifactContext:
+    run_id: str
+    epoch: int
+    step: int
+    trigger: str      # "after_backward", "epoch_end", ...
+    hook: str         # "weight_perturb", "hessian", ...
+    split: str | None = None     # "train" | "val" | "ood/..." or None
+
+
+
+def atomic_write_bytes(path: str, data: bytes):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".tmp_", dir=os.path.dirname(path))
+    with os.fdopen(fd, "wb") as f:
+        f.write(data); f.flush(); os.fsync(f.fileno())
+    os.replace(tmp, path)
 class Logger:
     """
     Use this to save and keep track of all versions, metrics and other details, including: 
@@ -63,16 +91,17 @@ class Logger:
         self.project = config.get("logging", {}).get("project", "default")
         self.run_name = config.get("run_name", "unnamed_run")
 
-        self._current_metrics = {}
+
         self._last_step = None
         self.meta = meta
-        #TODO: Don't love the field names. 
+        
         self.field_names = []
-    
-  
+        self._buffer_by_step = {}   # step -> {key: value}
+        self._meta_by_step   = {}   # step -> {"epoch":..., "phase":..., "trigger":..., "hook":...}
+        self._artifact_buf = {}
         self._rows = []
         self._init_csv_logger()
-
+        self._prefix_strategy = "phase/trigger/hook" #could customize in config
         #saves standard output and error. 
         redirect_stdout_stderr(self.run_dir)
         
@@ -83,17 +112,109 @@ class Logger:
                        config=config, settings =wandb.Settings( _disable_stats=True, _disable_meta=True))
             self._original_log = wandb.log
             #wandb.log = self.debug_log
-    def debug_log(self,*args, **kwargs):
-        step = kwargs.get("step", "<auto>")
-        print(f"[WandB LOG] step={step}, keys={list(args[0].keys()) if args else '??'}")
+    def format_artifact_path(self, ctx: ArtifactContext, key: str) -> str:
+        epst = f"ep{ctx.epoch:04d}-st{ctx.step:09d}"
+        split = (ctx.split + "/") if ctx.split else ""
+        base, ext = (key.rsplit(".", 1) + [""])[:2]
+        ext = f".{ext}" if ext else ""
+        return (
+                f"{ctx.trigger}/{ctx.hook}/{split}{base}/{epst}{ext}")
+    def _prefix_from_ctx(self, ctx) -> str:
+        # Options: "phase/trigger/hook", "phase/hook", "hook", etc.
+        parts = []
+        for token in self._prefix_strategy.split("/"):
+            if token == "phase":   parts.append(ctx.phase)               # "train" | "val" | "test"
+            elif token == "trigger": parts.append(ctx.trigger)           # e.g., "after_backward", "epoch_end"
+            elif token == "hook":    parts.append(getattr(ctx, "hook", ""))  # diag name if present
+        return "/".join([p for p in parts if p])
+    def flush(self, step):
+        #just called once, mostly replaced by log_dict. 
+        self._flush_step(step)
+    def log_dict(self, ctx, metrics, finalize:bool = False): 
+        # right now assume that metrics is a dictionary of values. 
+        print("ogging  dict")
+        prefix = self._prefix_from_ctx(ctx)
+        flat = _flatten(metrics, prefix = prefix)
+
+
+        buf = self._buffer_by_step.setdefault(ctx.step, {})
+        buf.update(flat) # Merges buffer. 
+
+        # remember last metadata for this step
+        self._meta_by_step[ctx.step] = {
+        "epoch": ctx.epoch, "phase": ctx.phase,
+        "trigger": ctx.trigger, "hook": getattr(ctx, "hook", None),
+        } #last write wins here. 
+        #TODO: add json temporary structure. 
+        #this is how we flush. 
+        if finalize: 
+            self._flush_step(ctx.step)
+        return 
+    def save_plot(self, actx: ArtifactContext, key: str, fig, *, log_key: str | None = None):
+        # 1> write png to disk automatically. 
+        print("Saving plot")
+        plot_path = self.run_dir / "plots"
+        plot_path.mkdir(parents=True, exist_ok = True)
+
+        path = plot_path/(self.format_artifact_path(actx, key) + ".png")
+        print("path: ", path)
+        import matplotlib.pyplot as plt
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight")
+        atomic_write_bytes(path, buf.getvalue())
+
+        # 2) enqueue for W&B upload at step finalize (optional)
+        if self.use_wandb:
+            items = self._artifact_buf.setdefault(actx.step, [])
+            # wandb.Image is fine for PNGs; log_key controls the chart panel name
+            items.append((path, "image", log_key or f"artifact/{actx.hook}/{key}"))
+        plt.close(fig)
+    def save_artifact(self, actx: ArtifactContext, key: str, data: bytes, *, log_key: str | None = None):
+        #FOR NOW: Assuming bytes is a numpy array
+        #TODO: Fix this. 
+        artifact_path = self.run_dir/"artifacts"
+        artifact_path.mkdir(parents = True, exist_ok = True)
+        path = artifact_path/self.format_artifact_path(actx, key)
+       # if not key.endswith(".npy"):
+            #data = np.ascontiguousarray(data).tobytes()
+        #else:
+        buf = io.BytesIO()
+        np.save(buf,data)
+        data = buf.getvalue()
+        atomic_write_bytes(path, data)
+        if self.use_wandb:
+            items = self._artifact_buf.setdefault(actx.step, [])
+            items.append((path, "file", log_key or f"artifact/{actx.hook}/{key}"))
+    
+    def _append_csv_row(self, row: dict):
+        new_keys = [k for k in row.keys() if k not in self.field_names] # just applied to new metrics. 
+        if new_keys: 
+            self.field_names.extend(new_keys) # Extend increases the list
+            self._rewrite_csv_header() #rewrites the header when adding new things to the field names
+
+        self.csv_writer.writerow(row) #write row to csv
+        self.csv_file.flush() # put it in csv
+
+    def _flush_step(self, step:int):
+        #called from flush. 
+        print("FLUSHING")
+        flat = self._buffer_by_step.pop(step, None)
+        meta = self._meta_by_step.pop(step, {})
+        arts = self._artifact_buf.pop(step, [])
+        row = {"step":step, **meta, **(flat or {})}
+        self._append_csv_row(row)
+        if self.use_wandb:
+            for path, kind, log_key in arts:
+                if kind == "image":
+                    wandb.log({log_key: wandb.Image(str(path))}, step=step, commit = False)
+                else:
+                    wandb.log({log_key: str(path)}, step=step, commit = False)
+            if flat:
+                wandb.log(flat, step = step, commit =True )
+            else: 
+                wandb.log({}, step=step, commit = True) # close commit. 
         
-        # Print caller info
-        stack = inspect.stack()
-        print(f"  Called from: {stack[1].filename}:{stack[1].lineno}")
 
-        return self._original_log(*args, **kwargs)     
-
-       
     def _init_csv_logger(self):
         #maybe check for overwrites? 
         self.csv_path = self.run_dir/ "metrics.csv"
@@ -101,44 +222,6 @@ class Logger:
 
         self.csv_writer = csv.DictWriter(self.csv_file, fieldnames = self.field_names, extrasaction = "ignore") #the  ignore allows dyanamic row addition. 
         self.csv_writer.writeheader()
-
-    def log_scalar(self, name, value, step):
-        #just logs to wandb. 
-        self._flush_step(name, value, step)
-        
-        #if want to REMOVE dynamic addition - remove this if statement and the dictionary will raise a value error. 
-        if name not in self.field_names:
-            self.field_names.append(name)
-            #allow dynamically updating. 
-            self._rewrite_csv_header()
-        #flush manually in the trainer loop. 
-        self._current_metrics[name] = value
-        self._last_step = step
-        
-        
-    def _flush_metrics(self, step):
-        row = {"step": step}
-        row.update(self._current_metrics)
-        #Note: This is only for dynamically adding fields/columns to CSV. it allows header to be udpated. 
-        self._rows.append(row)
- 
-        #if i don't fill in all metrics, this throws an error, thinking it is a set. 
-        # DictWriter will drop keys it hasn't seen yet, but because appended them above, it now knows them. 
-        self.csv_writer.writerow(row)
-        self.csv_file.flush()
-        if self.use_wandb:
-            #print("logging epoch")
-            wandb.log(row, step=step)
-    def _flush_step(self, name, value, step):
-        if self.use_wandb:
-            wandb.log({name: value}, step = step)
-    def flush(self, step=None):
-        step = step or self._last_step
-        if step is None: 
-            return
-        self._flush_metrics(step)
-        self._current_metrics = {}
-        self._last_step = None
     def _rewrite_csv_header(self):
         """
         Rewinds and rewrites the CSV file with the new header,
@@ -155,18 +238,16 @@ class Logger:
         self.csv_writer.writeheader()
         for row in self._rows:
             self.csv_writer.writerow(row)
-    def save_plot(self, fig, name, step):
-        plot_path = self.run_dir / "plots"
-        plot_path.mkdir(parents=True, exist_ok = True)
-        path = plot_path / name
-        #hopefully this does what I want. 
-        os.makedirs(os.path.dirname(path), exist_ok = True)
-        fig.savefig(path)
-        plt.close(fig)
-      
-        if self.use_wandb:
-            wandb.log({name: wandb.Image(str(path))}, step = step)
+    def debug_log(self,*args, **kwargs):
+        step = kwargs.get("step", "<auto>")
+        print(f"[WandB LOG] step={step}, keys={list(args[0].keys()) if args else '??'}")
+        
+        # Print caller info
+        stack = inspect.stack()
+        print(f"  Called from: {stack[1].filename}:{stack[1].lineno}")
 
+        return self._original_log(*args, **kwargs)     
+    """
     def save_checkpoint(self, model, epoch):
         if not self.save_checkpoints:
             return
@@ -182,40 +263,7 @@ class Logger:
             artifact = wandb.Artifact(name = "model", type = "checkpoint")
             artifact.add_file(path)
             wandb.log_artifact(artifact, aliases = [f"epoch_{epoch}"])
-
-    def save_artifact(self, array, name):
-        if not self.save_artifacts:
-            return
-        path_arr = self.run_dir / "artifacts" 
-        
-        path_arr.mkdir(parents=  True, exist_ok = True)
-        #want to add further subfolder functionality. 
-        
-        path = path_arr / f"{name}.npy"
-        #hopefully this does what I want. 
-        os.makedirs(os.path.dirname(path), exist_ok = True)
-        np.save(path, array)
-        if self.use_wandb:
-            #wandb.save(path)
-       
-            artifact = wandb.Artifact(name = name.replace("/", "_"), type = "artifact")
-            artifact.add_file(path)
-            #no aliases rn
-            wandb.log_artifact(artifact)
-
-
-    def save_array(self, array, name):
-        if not self.save_artifacts:
-            return 
-        path = self.run_dir / f"{name}.npy"
-        np.save(path, array)
-        if self.use_wandb:
-
-            #wandb.save(path)
-            artifact = wandb.Artifact(name = name.replace("/", "_"), type = "artifact")
-            artifact.add_file(path)
-            wandb.log_artifact(artifact)
-
+    """
     def close(self):
         self.csv_file.close()
         if self.use_wandb:

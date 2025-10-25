@@ -1,10 +1,10 @@
-from logger import Logger
+from core.logger import Logger
 import torch
 import contextlib
 from  diagnostics.registry import get_diagnostics
 import time
 from dataclasses import dataclass
-from hookManager import HookManager, Trigger, StepCtx, Services
+from core.hookManager import HookManager, Trigger, StepCtx, Services
 from collections import defaultdict
 from utils.hookHelpers import Services
 class AvgMeter:
@@ -264,62 +264,4 @@ class Trainer:
         self._fire(Trigger.EVAL_END, ctx_eval_end, finalize = True)
         self.meters.reset(phase)
         return out
-    def compute_gradient_norms(self, model, group_layers = False):
-       
-        """
-        Computes gradient norms for all parameters in the model.
-
-        Args:
-            model (torch.nn.Module): The model with gradients computed.
-            group_layers (bool): If True, aggregate gradients by layer prefix (e.g. 'encoder.0').
-
-        Returns:
-        #NOT TRUE, CHANGE THIS. 
-            A dict containing:
-                - per_param: {param_name: norm}
-                - per_layer: {layer_name: norm} (if group_layers=True)
-                - total: float (global gradient norm)
-        """
-        grad_norms = {}
-        total_norm_sq = 0.0
-        
-        for name, param in model.named_parameters():
-           
-            if param.grad is not None:
-                #detach grad from everything. Have gradient bc backprop. 
-                norm = param.grad.detach().norm(2).item()
-                grad_norms[name] = norm
-                total_norm_sq += norm ** 2
-        #hopefully no shared names
-        grad_norms["total"] = total_norm_sq**0.5
-
-        if group_layers:
-            layer_norms = defaultdict(list)
-            for name, norm in grad_norms.items():
-                
-                layer_name = name.split('.')[0]  # You can customize this grouping rule
-           
-                layer_norms[layer_name].append(norm ** 2)
-            
-            for layer, norm_sq_list in layer_norms.items():
-                grad_norms[layer] = sum(norm_sq_list) ** 0.5
-  
-        return grad_norms
-    def compute_weight_norms(self, model, group_layers = False):
-        """
-        Returns a dict of L2 norms of all model weights.
-        """
-        norms = {}
-
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                norms[f"weight_norm/{name}"] = param.data.norm(2).item()
-        #add per layer here as well. 
-        if group_layers: 
-            layer_norms = defaultdict(list)
-            for name, norm in norms.items():
-                layer_name = name.split('.')[0]
-                layer_norms[layer_name].append(norm**2)
-            for layer, norm_sq_list in layer_norms.items():
-                norms[layer] = sum(norm_sq_list)**.5
-        return norms
+    

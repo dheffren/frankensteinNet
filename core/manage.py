@@ -3,7 +3,7 @@
 # dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML"]
 # ///
 import argparse
-from runManager import RunManager
+from core.runManager import RunManager
 
 def main():
     #TODO - use additional/better list methods, clean up, and merge args.delete and delete_folder. 

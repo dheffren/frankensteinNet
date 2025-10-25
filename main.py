@@ -3,10 +3,10 @@
 # dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas", "seaborn", "wandb", "hessian_eigenthings@git+https://github.com/noahgolmant/pytorch-hessian-eigenthings.git@master#egg=hessian-eigenthings"]
 # ///
 import yaml
-from setup import build_model, build_optimizer, build_scheduler, build_dataloaders, build_hyp_scheduler, setup_experiment
-from train import Trainer
-from runManager import RunManager
-from logger import Logger
+from core.setup import  setup_experiment
+from core.train import Trainer
+from core.runManager import RunManager
+from core.logger import Logger
 from pathlib import Path
 
 import argparse
@@ -67,7 +67,7 @@ set_seed(config["seed"])
 # Build components
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 config["device"] = str(device)
-print(device)
+
 #Note: training data affects config. 
 bundle = setup_experiment(config)
 # Train

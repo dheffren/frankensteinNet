@@ -23,6 +23,7 @@ class BallRotatingDataset(torch.utils.data.Dataset):
             self.input_channels = 1
         self.dataAmt = amount
         self.data_shape = (self.input_channels, img_size, img_size)
+       
         self.csv_path = self.root/"data.csv"
        
         #TODO: Make it so don't have to generate data every time. 
@@ -105,6 +106,10 @@ class BallRotatingDataset(torch.utils.data.Dataset):
         vel_private2 = -5   # Counter-clockwise
         dataCount = self.dataAmt
         imgSize = self.img_size
+        try:
+            open(output_csv_path, "x")
+        except FileExistsError:
+            pass
         with open(output_csv_path, "w", newline="") as csvfile:
             fieldnames = ["path1", "path2"]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

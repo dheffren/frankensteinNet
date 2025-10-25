@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from datetime import datetime
-from diagnostics import get_diagnostics
 from pathlib import Path
 from dataclasses import dataclass
 import inspect
@@ -132,7 +131,6 @@ class Logger:
         self._flush_step(step)
     def log_dict(self, ctx, metrics, finalize:bool = False): 
         # right now assume that metrics is a dictionary of values. 
-        print("ogging  dict")
         prefix = self._prefix_from_ctx(ctx)
         flat = _flatten(metrics, prefix = prefix)
 

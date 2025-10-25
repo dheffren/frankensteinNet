@@ -1,10 +1,10 @@
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split
-from normalize import Normalizer, build_normalizers
+from data_pipeline.normalize import Normalizer, build_normalizers
 from pathlib import Path
 import yaml
-from transformations import TransformRegistry, build_transforms
+from data_pipeline.transformations import TransformRegistry, build_transforms
 
 """
 Note: Write a custom method for each potential "type" of dataset i have. 

@@ -1,18 +1,18 @@
 from torch.optim import Adam
 from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
-from scheduler import ScalarSchedule, SchedBundle
-from runManager import RunManager
+from core.scheduler import ScalarSchedule, SchedBundle
+from core.runManager import RunManager
 from torch.utils.data import DataLoader
-from logger import Logger
+from core.logger import Logger
 
-from data import get_dataloaders
-from losses import make_loss_fn
+from data_pipeline.data import get_dataloaders
+from core.losses import make_loss_fn
 import torch
 import torch.nn as nn
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 from utils.setup_hooks import register_hooks_from_config
-from hookManager import HookManager
+from core.hookManager import HookManager
 @dataclass
 class ExperimentBundle:
     model: nn.Module
@@ -25,6 +25,7 @@ class ExperimentBundle:
     run_manager: RunManager
     hook_manager: HookManager
     metadata: dict
+
 def setup_experiment(config) -> ExperimentBundle:
     device = config["device"]
     dataloaders, meta = build_dataloaders(config)

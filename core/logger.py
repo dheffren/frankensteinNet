@@ -130,6 +130,8 @@ class Logger:
         #just called once, mostly replaced by log_dict. 
         self._flush_step(step)
     def log_dict(self, ctx, metrics, finalize:bool = False): 
+        ### Check the input is the right shape: 
+        assert(isinstance(metrics, dict)) #should just be one dictionary, no nesting. 
         # right now assume that metrics is a dictionary of values. 
         prefix = self._prefix_from_ctx(ctx)
         flat = _flatten(metrics, prefix = prefix)
@@ -188,29 +190,31 @@ class Logger:
         new_keys = [k for k in row.keys() if k not in self.field_names] # just applied to new metrics. 
         if new_keys: 
             self.field_names.extend(new_keys) # Extend increases the list
-            self._rewrite_csv_header() #rewrites the header when adding new things to the field names
+            self._rewrite_csv_header() #rewrites the header when adding new things to the field names I think this is breaking? 
 
         self.csv_writer.writerow(row) #write row to csv
+        self._rows.append(row) #use this so can rewrite header. 
         self.csv_file.flush() # put it in csv
 
     def _flush_step(self, step:int):
         #called from flush. 
-        print("FLUSHING")
+        print(f"FLUSHING STEP: {step}")
         flat = self._buffer_by_step.pop(step, None)
         meta = self._meta_by_step.pop(step, {})
         arts = self._artifact_buf.pop(step, [])
         row = {"step":step, **meta, **(flat or {})}
+        print("Row: ", row)
         self._append_csv_row(row)
         if self.use_wandb:
             for path, kind, log_key in arts:
                 if kind == "image":
-                    wandb.log({log_key: wandb.Image(str(path))}, step=step, commit = False)
+                    wandb.log({log_key: wandb.Image(str(path))}, step=step)
                 else:
-                    wandb.log({log_key: str(path)}, step=step, commit = False)
+                    wandb.log({log_key: str(path)}, step=step)
             if flat:
-                wandb.log(flat, step = step, commit =True )
+                wandb.log(flat, step = step)
             else: 
-                wandb.log({}, step=step, commit = True) # close commit. 
+                wandb.log({}, step=step) # close commit. 
         
 
     def _init_csv_logger(self):

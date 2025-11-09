@@ -21,6 +21,14 @@ class MetricStore:
             self.m.setdefault(key, AvgMeter()).update(v)
     def as_dict(self): return {k: m.mean() for k,m in self.m.items()}
     def reset(self): self.m.clear()
+class MeterRegistry:
+    #
+    def __init__(self): self._m = {}
+    def get(self, key):
+        if key not in self._m: self._m[key] = MetricStore()
+        return self._m[key]
+    def reset(self, key): 
+        if key in self._m: self._m[key].reset()
 @dataclass(frozen=True)
 class ACtx:  # minimal ArtifactContext shape
     run_id: str; epoch: int; step: int; trigger: str; hook: str; split: str|None=None
@@ -56,13 +64,7 @@ class Trainer:
             checkpoint=self._checkpoint, 
             run_dir = self.logger.run_dir
         )
-        class MeterRegistry:
-            def __init__(self): self._m = {}
-            def get(self, key):
-                if key not in self._m: self._m[key] = MetricStore()
-                return self._m[key]
-            def reset(self, key): 
-                if key in self._m: self._m[key].reset()
+        
         self.meters = MeterRegistry()
         return 
     def _checkpoint(self, tag: str) -> str:
@@ -108,6 +110,7 @@ class Trainer:
         for name, out in self.hook_manager.call(trig, ctx, self.services) or []:
             if not out: continue
             if "metrics" in out and out["metrics"]:
+                print("out metrics: ", out["metrics"])
                 self.logger.log_dict(ctx, out["metrics"], finalize=False)
                 # accumulate for epoch means on train steps only
                 if ctx.phase=="train" and ctx.batch_idx>=0:
@@ -132,35 +135,33 @@ class Trainer:
                         print("CALLING PLOT")
                         self.logger.save_plot(actx, key=key, fig=payload)
         if finalize:
-            print("Before finalize")
+            #Call each step and at end of epoch. 
             assert(ctx.step == self.global_step)
             self.logger.flush(ctx.step)
     def train(self):
-        #PLACEHOLDER
+        #TODO: log_dict currently setup to work with the train: epoch_means but i don't actually think that's the best way. I think it will make things worse. 
         try: 
             print("cudnn benchmark is enabled:", torch.backends.cudnn.benchmark) 
             torch.backends.cudnn.benchmark = True
+            #metrics at begin of training. 
             ctx = self._ctx(phase = "train", trigger = Trigger.TRAIN_BEGIN)
             self._fire(Trigger.TRAIN_BEGIN, ctx)
-           
-            
             for self.epoch in range(self.config["training"]["epochs"]):
                 self.train_epoch(self.epoch)
-                #log gradient norms here. 
                 # EPOCH_END (train epoch means)
                 epoch_means = self.meters.get("train").as_dict()
                 ctx_end = self._ctx(phase="train", trigger=Trigger.EPOCH_END, metrics=epoch_means)
-                self.logger.log_dict(ctx_end, {"train/epoch_mean": epoch_means}, finalize=False)
+                self.logger.log_dict(ctx_end, epoch_means, finalize=False)
                 self.meters.reset("train")
                 self._fire(Trigger.EPOCH_END, ctx_end, finalize = True)
-
                 return_dict_val = self.evaluate(self.epoch, True)
-                print()
+             
                 print(f"Epoch {self.epoch}: Train {epoch_means['loss']}, Val {return_dict_val['loss']}")
                 #update scheduler - if no scheduler, should still work as a constant. 
                 self.scheduler.step() #-- if want to update lr in the middle of epoch, will have to do in train epoch. 
                 #if i want per epoch values for train metrics somewhere, I have to DO the computation - it won't just give me everything. 
                 # log things we care about. 
+                
             # TRAIN_END
             ctx = self._ctx(phase="train", trigger=Trigger.TRAIN_END)
             self._fire(Trigger.TRAIN_END, ctx, finalize=True)
@@ -169,15 +170,12 @@ class Trainer:
             # EXCEPTION (ensure weights restored, allow hooks to dump state)
             ctx = self._ctx(phase="train", trigger=Trigger.EXCEPTION)
             self._fire(Trigger.EXCEPTION, ctx, finalize=True)
-            raise
-            
-            
+            raise 
         
     def train_epoch(self, epoch):
         self.model.train()
         ctx_epoch_begin = self._ctx(phase = "train", trigger = Trigger.EPOCH_BEGIN)
         self._fire(Trigger.EPOCH_BEGIN, ctx_epoch_begin)
-        step_count = 0
         for (bidx, batch) in enumerate(self.train_loader):
             ctx_before = self._ctx(phase="train", trigger=Trigger.BEFORE_STEP, batch_idx=bidx)
             self._fire(Trigger.BEFORE_STEP, ctx_before)
@@ -185,16 +183,13 @@ class Trainer:
             #should only contain primary loss and any loss components or fast metrics. 
             t0 = time.time()
             loss_dict = self.model.compute_loss(batch, epoch)
-
-            
-            
             fwd_time = time.time() - t0
             #TODO: Check if this stuff works and is useful. 
             step_metrics = {**loss_dict, "time/forward": fwd_time}
             loss = loss_dict["loss"]
             ctx_af = self._ctx(phase="train", trigger=Trigger.AFTER_FORWARD, loss=loss, metrics=step_metrics, batch_idx=bidx)
             # log cheap scalars now (not finalized)
-            self.logger.log_dict(ctx_af, {"train": step_metrics}, finalize=False)
+            self.logger.log_dict(ctx_af, step_metrics, finalize=False)
             self._update_meter("train", step_metrics)
             self._fire(Trigger.AFTER_FORWARD, ctx_af)
             #Backward
@@ -204,7 +199,7 @@ class Trainer:
             bwd_time = time.time() - t1
             ctx_ab = self._ctx(phase="train", trigger=Trigger.AFTER_BACKWARD,
                                loss=loss, metrics={"time/backward": bwd_time}, batch_idx=bidx)
-            self.logger.log_dict(ctx_ab, {"train": {"time/backward": bwd_time}}, finalize=False)
+            self.logger.log_dict(ctx_ab,  {"time/backward": bwd_time}, finalize=False)
             self._update_meter("train",  {"time/backward": bwd_time})
             self._fire(Trigger.AFTER_BACKWARD, ctx_ab)
             
@@ -219,15 +214,10 @@ class Trainer:
             # Let hooks add weight norms, EMA, etc.; finalize this step once.
             self._fire(Trigger.AFTER_OPT_STEP, ctx_post, finalize=True)
             self.global_step += 1
-            
-            
-           
         return
 
     def evaluate(self, epoch, use_gradients = False, step_log= False, phase = "val"):
         #maybe only include jacobian terms in training not validation. 
-       
-        
         self.model.eval()
         
         ctx_eval_begin = self._ctx(phase=phase, trigger=Trigger.EVAL_BEGIN)
@@ -260,7 +250,7 @@ class Trainer:
         out = {**avg_loss, **avg_time}
         # EVAL_END (log val means; do not bump global_step)
         ctx_eval_end = self._ctx(phase=phase, trigger=Trigger.EVAL_END, metrics=out)
-        self.logger.log_dict(ctx_eval_end, {phase: out}, finalize = False) # Should finalize be true? 
+        self.logger.log_dict(ctx_eval_end, out, finalize = False) # Should finalize be true? 
         self._fire(Trigger.EVAL_END, ctx_eval_end, finalize = True)
         self.meters.reset(phase)
         return out

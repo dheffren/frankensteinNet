@@ -44,7 +44,7 @@ def prepare_dataset(cfgD): #config["data"]
         print(f"[INFO] Invalid or missing normalization info: {e}")
         raw_ds = get_dataset(cfgD, transform=None)
         stat_loader = torch.utils.data.DataLoader(
-            raw_ds, 
+            raw_ds,
             batch_size = cfgD["batch_size"], 
             shuffle = False, 
             num_workers = cfgD["num_workers"])

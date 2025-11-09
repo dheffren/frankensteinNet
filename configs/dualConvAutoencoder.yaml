@@ -57,25 +57,10 @@ data:
     "x2": ["ToTensor", "Normalize"] # no normalize means it doesn't end up doing any normalization. This allows for NON images input as well.  
 # ---------- Diagnostics ----------
 hooks: 
-  - name: epoch
-    trigger: epoch
-    every: 1
-  - name: train_metrics
-    trigger: step
-    every: 1
-  - name: train_metrics
-    trigger: epoch
-    every: 1
-  - name: val_metrics
-    trigger: epoch
-    every: 1
-  - name: learning_rate
-    trigger: epoch
-    every: 1
-  - name: checkpoints
-    trigger: epoch
-    every: 10
-  - name: tensor_stats_diag
+  #- name: checkpoints
+   # trigger: epoch
+   # every: 10
+  #- name: tensor_stats_diag
   - name: layer_pca
   - name: recon
   - name: jacobian_norm_diag
@@ -84,16 +69,16 @@ hooks:
   - name: hessian
   - name: weight_perturb
   - name: global_pca
-    trigger: begin
+    trigger: TRAIN_BEGIN
     every: 1
   - name: loss_surface_heatmap
-    trigger: epoch
+    trigger: EPOCH_END
     every: 10
   - name: loss_surface_heatmap
-    trigger: end
+    trigger: TRAIN_END
     every: 1
   - name: plot_metrics
-    trigger: post_run
+    trigger: TRAIN_END
     every: 1
 
   

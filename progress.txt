@@ -84,3 +84,13 @@ loss heatmap.
 Got the heatmap and the hessian stuff done! Glad that's mostly out of the way. 
 The model is exploding up in every sense of the word, and i'm trying to make sense of it. 
 I think i might need to add batch Normalization or some other normalization method like gradient clipping. 
+
+
+
+How can I simplify all of this? Please think of something!
+What precisely do I want: 
+    1. Automatic sweeps. 
+    How can I specify this? - run over a bunch of different seeds, different datasets, hyperparameters, want aggregate metrics over these different runs. Want to view all of them in wandb. 
+    How do i do the math for this: Call the main.py file from the sweeping, then need to save all the metrics as SEPARATE wandb runs!
+    2. fast diagnostics. make sure they work automatically and easily. 
+How do i specify the config file so easily? 

@@ -1,8 +1,7 @@
 # /// script
-# requires-python = ">=3.9"
-# dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas", "wandb", "hessian_eigenthings@git+https://github.com/noahgolmant/pytorch-hessian-eigenthings.git@master#egg=hessian-eigenthings", "seaborn"]
+# requires-python = ">=3.10"
+# dependencies = ["numpy", "torch", "torch_geometric", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas", "seaborn", "wandb", "hessian_eigenthings@git+https://github.com/noahgolmant/pytorch-hessian-eigenthings.git@master#egg=hessian-eigenthings"]
 # ///
-# tools/sweep.py
 import argparse, itertools, random, subprocess, yaml, csv, tempfile, datetime
 from copy import deepcopy
 from pathlib import Path
@@ -156,4 +155,4 @@ def launch_sweep(spec_path: Path):
 parser = argparse.ArgumentParser()
 parser.add_argument("--config", help="Path to sweep YAML.")
 args = parser.parse_args()
-launch_sweep(Path(args.config))
+launch_sweep(Path("sweep_configs/" + args.config))

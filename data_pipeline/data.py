@@ -5,7 +5,7 @@ from data_pipeline.normalize import Normalizer, build_normalizers
 from pathlib import Path
 import yaml
 from data_pipeline.transformations import TransformRegistry, build_transforms
-
+import os
 """
 Note: Write a custom method for each potential "type" of dataset i have. 
 Then call this from the utils with the data path specified. 
@@ -53,7 +53,7 @@ def prepare_dataset(cfgD): #config["data"]
         #TODO: I think this is BACKWARD. - the alt one is backwards. Check if other one works. 
         keys = [k for k, tlist in cfgD["transforms"].items() if "Normalize" in tlist]
         stats = compute_mean_std_for_keys(stat_loader, keys = keys)
-        #print(stats)
+        print(stats)
         #save mean and std to disk. 
         save_normalization_stats(stats,  path)
     #after this - know it works. Thus, can proceed normally
@@ -107,21 +107,28 @@ def load_normalization_stats(dataset_root):
     return stats
 
 def save_normalization_stats(stats, path):
+
     name = "normalization.yaml"
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok = True)
     pathL = Path(path) / name
     with open(pathL, "w") as f:
         #TODO: Fix this for new layout. .tolist is wrong. 
         yaml.dump({"mean": stats["mean"], "std":stats["std"]}, f)
 def compute_mean_std_for_keys(loader, keys, eps = 1e-6):
     """
+    TODO: This is TERRIBLE - bad generalization. 
     Note: Need data to be returned/saved as a dictionary in this case. 
     Keys = JUST keys that we're going to normalize with. 
     """
+    print("keys: ", keys)
     stats = {k: {"sum": 0., "sum_sq": 0., "count": 0} for k in keys}
     for batch in loader:
         for k in keys:
+            
             if k not in batch: continue
             x = batch[k]  # shape: [B, C, H, W]
+            print(x.shape)
             if not is_image_like(x): continue
             B, C, H, W = x.shape
             stats[k]["sum"]    += x.sum(dim=(0, 2, 3))  # sum over pixels per channel

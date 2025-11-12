@@ -145,7 +145,7 @@ def weight_perturb(ctx: StepCtx, S: Services):
     name = "weight_perturb"
     epoch = ctx.epoch
     diag_cfg = cfg.get("diagnostics_config", {})
-    layers = diag_cfg.get("layer_pca_layers", ["latent"])
+    layers = diag_cfg.get("layer_pca_layers", [])
     n_components = diag_cfg.get("layer_pca_components", 5)
     max_batches = diag_cfg.get("max_batches", 1)
     save_latents = diag_cfg.get("save_latents", False)

@@ -87,8 +87,8 @@ class Logger:
         self.run_dir = run_dir
         #update run dir as we go. Automatically deals with repeat names. 
         #self.use_wandb = config.get("logging", {}).get("use_wandb", False)
-        self.project = config.get("logging", {}).get("project", "default")
-        self.run_name = config.get("run_name", "unnamed_run")
+        self.project = config["project_name"] # TODO: Fix this. 
+        self.run_name = config["run_name"]
 
 
         self._last_step = None

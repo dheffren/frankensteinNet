@@ -3,7 +3,7 @@ import torch
 from torch_geometric.loader import DataLoader
 
 from torch.utils.data import DataLoader, TensorDataset
-from pointNet import PointNet
+
 from torch.nn import Sequential, Linear, ReLU
 from matplotlib.colors import Normalize
 import matplotlib.pyplot as plt
@@ -19,67 +19,32 @@ from torchvision import transforms
 from .data_registry import register_dataset
 @register_dataset("pointManifold")
 class PointManifold(torch.utils.data.Dataset):
-    def __init__(self, root = "data/pointManifold", train = True, transform = None, amount = 2000, d= 100):
+    #TODO: This should take the config instead. 
+    def __init__(self, root = "data/pointManifold", train = True, transform = None, amount = 2000, d= 100, dim= 3):
         self.train = train
-        
+        #add transform capability
         self.transform = transform
         self.root = Path(root)
         self.dataAmt = amount
-        self.dataD = d
-        # dataset scheduler? 
-@register_dataset("ballRotating")
-class BallRotatingDataset(torch.utils.data.Dataset):
-    #TODO: I have a feeling the root should just be "data/" to be consistent with MNIST, then it should add its own name here. 
-    def __init__(self, root = "data/ballRotating", train=True, transform = None, BW = False, img_size= 128, amount = 2000):
-        self.train = train
-        
-        self.transform = transform
-        self.root = Path(root)
-        self.BW = BW
-        self.input_channels = 3
-        self.img_size = img_size
-        if self.BW: 
-            self.input_channels = 1
-        self.dataAmt = amount
-        self.data_shape = (self.input_channels, img_size, img_size)
-       
+        self.d = d
         self.csv_path = self.root/"data.csv"
-       
-        #TODO: Make it so don't have to generate data every time. 
-        self.create_data(output_csv_path = self.csv_path)
-        
-        self.entries = pd.read_csv(self.csv_path)
+        # TODO: dataset scheduler? 
+        self.dim = dim
+        #TODO: temporary - weakness is it needs everything in memory at once. Make something nicer later. 
+        self.dataset = make_dataset(self.dataAmt, self.d, self.dim, "cpu")
+        #TODO: Self.transform do later. 
     def __len__(self):
         return self.dataAmt
-
     def __getitem__(self, idx):
-      
-        #TODO: Add caching or lazy loading or something faster. 
-        row = self.entries.iloc[idx]
-        x1 = Image.open(row["path1"])
-        x2 = Image.open(row["path2"])
-        #return data as a dict. 
-        element = {"x1": x1, "x2":x2}
-        #includes normalization. 
+        item = self.dataset.__getitem__(idx)
+        return {"inputs": item[0], "outputs": item[1]}
+        
 
-        if self.transform:
-      
-            transformedEle = self.transform(element)
-            return transformedEle
-        else: 
-            #still convert PIL image to tensor. 
-            transform = transforms.Compose([transforms.ToTensor()])
-             
-            element = {"x1": transform(x1), "x2":transform(x2)}
-            return element
     def get_metadata(self):
 
         return {
-            "input_channels": self.input_channels, 
-            "input_shape": self.data_shape, 
-            "latent_dimU": 2, 
-            "latent_dimV": 2, 
-            "latent_dimC": 2
+            "d": self.d,
+            "dim": self.dim, 
         }
 def _vmf_sample_general(mu: Tensor, kappa: Tensor, n: int) -> Tensor:
     """
@@ -145,6 +110,16 @@ def _vmf_sample_general(mu: Tensor, kappa: Tensor, n: int) -> Tensor:
     Q = _householder_Q(mu)          # (B,d,d)
     X = torch.einsum('bij,bnj->bni', Q, x0)
     return X
+def f(x): 
+    #x is (B, N, 3) 
+    p = torch.ones_like(x)
+    t = 2
+    c = 10
+    return c*torch.exp(-1*((x-p)*(x-p)).sum(dim = -1)/t)
+def compute_avg_f(x):
+    fx = f(x) #(B, N)
+    empirical = fx.mean(-1)
+    return empirical
 
 def make_dataset(B, N, d, device):
     z= torch.normal(0, 1, size = (B, d))
@@ -153,6 +128,36 @@ def make_dataset(B, N, d, device):
     kappa = torch.tensor(10.0, device = device)
     data = _vmf_sample_general(z, kappa, N) # (B, N, d)
     vals = compute_avg_f(data)
-    show_point_values_real(data[0], labels = vals[0])
+    
     dataset = TensorDataset(data, vals)
     return dataset
+def _uniform_sphere(dim, n=1):
+    """Uniform on S^{dim-1} in R^{dim}."""
+    z = np.random.normal(size=(n, dim))
+    z /= np.linalg.norm(z, axis=1, keepdims=True)
+    return z
+
+@torch.no_grad()
+def _householder_Q(mu: Tensor) -> Tensor:
+    """
+    Batched Householder reflections mapping e_d -> mu.
+    mu: (B,d) unit (will be normalized).
+    Returns Q: (B,d,d) orthogonal, with Q @ e_d = mu.
+    """
+    mu = mu / mu.norm(dim=-1, keepdim=True)
+    B, d = mu.shape
+    e_d = torch.zeros(B, d, device=mu.device, dtype=mu.dtype)
+    e_d[:, -1] = 1.0
+    diff = e_d - mu
+    nrm = diff.norm(dim=-1, keepdim=True)
+    # If already aligned (or nearly), return identity
+    Q = torch.eye(d, device=mu.device, dtype=mu.dtype).expand(B, d, d).clone()
+    mask = (nrm.squeeze(-1) >= 1e-12)
+    if mask.any():
+        v = torch.zeros_like(diff)
+        v[mask] = diff[mask] / nrm[mask]
+        # Q = I - 2 v v^T
+        Qv = torch.einsum('bi,bj->bij', v, v)
+        Q_new = torch.eye(d, device=mu.device, dtype=mu.dtype) - 2.0 * Qv
+        Q[mask] = Q_new[mask]
+    return Q

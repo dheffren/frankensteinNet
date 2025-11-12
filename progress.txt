@@ -94,3 +94,13 @@ What precisely do I want:
     How do i do the math for this: Call the main.py file from the sweeping, then need to save all the metrics as SEPARATE wandb runs!
     2. fast diagnostics. make sure they work automatically and easily. 
 How do i specify the config file so easily? 
+
+
+
+Setup of the main file is pretty good. 
+Need to integrate that easily with sweeps. 
+i HATE the data pipeline - normalization barely works at all, and doesn't work for non images. 
+I also don't like how dealing with data, losses, and models are separate - feels unnecessary. 
+If i want to treat this as a library, I would need a better way of dealing with these things. \\
+\\
+The metrics/diagnostics are also quite clunky right now. Some only work for certain tasks. 

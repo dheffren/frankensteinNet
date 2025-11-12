@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["numpy", "torch", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas", "seaborn", "wandb", "hessian_eigenthings@git+https://github.com/noahgolmant/pytorch-hessian-eigenthings.git@master#egg=hessian-eigenthings"]
+# dependencies = ["numpy", "torch", "torch_geometric", "Pillow", "matplotlib", "scikit-learn", "torchvision", "PyYAML", "pandas", "seaborn", "wandb", "hessian_eigenthings@git+https://github.com/noahgolmant/pytorch-hessian-eigenthings.git@master#egg=hessian-eigenthings"]
 # ///
 import yaml
 from core.setup import  setup_experiment
@@ -73,8 +73,8 @@ bundle = setup_experiment(config)
 # Train
 trainer = Trainer(bundle.model, bundle.optimizer, bundle.scheduler, bundle.dataloaders, bundle.logger, bundle.hook_manager, bundle.metadata, config)
 trainer.train()
-
-bundle.hook_manager.call( trigger = "post_run", trigger_point = 1, run_dir = bundle.run_manager.run_dir
-                                   )
+#TODO: Get better post run setup. 
+#bundle.hook_manager.call( trigger = "post_run", trigger_point = 1, run_dir = bundle.run_manager.run_dir
+                                   #)
 
 

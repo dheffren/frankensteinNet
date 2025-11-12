@@ -43,10 +43,11 @@ def grad_norm(ctx: StepCtx, services: Services):
         if param.grad is not None:
             #detach grad from everything. Have gradient bc backprop. 
             norm = param.grad.detach().norm(2).item()
-            grad_norms[name] = norm
+    
+           # grad_norms["grad_norm/" + name] = norm
             total_norm_sq += norm ** 2
     #hopefully no shared names
-    grad_norms["total"] = total_norm_sq**0.5
+    grad_norms["grad_norm/total"] = total_norm_sq**0.5
     """
     if group_layers:
         layer_norms = defaultdict(list)

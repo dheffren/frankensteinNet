@@ -166,16 +166,27 @@ def make_contrastive_loss(temperature: float = 0.07, **extra):
 
     return _loss_fn
 
-
+def make_mse_loss(**extra): 
+    if extra: 
+         warnings.warn(f"[make_ae_loss] Unused keys in loss config: {list(extra.keys())}")
+    def _loss_fn(out, targets):
+        output = out["output"]
+        target = targets["target"]
+        print("output shape: ", output.shape)
+        print("target shape: ", target.shape)
+        lossVal = mse_loss(output, target)
+        return {"loss": lossVal}
+    return _loss_fn
 # -----------------------------------------------------------------------------
 # 🎯  Dispatcher – choose loss factory by config
 # -----------------------------------------------------------------------------
-
+#TODO: This SUCKS! Too clunky!
 LOSS_FACTORY = {
     "vae": make_vae_loss,
     "ae": make_ae_loss,
     "contrastive": make_contrastive_loss,
-    "dual_ae": make_dual_ae_loss
+    "dual_ae": make_dual_ae_loss, 
+    "mse": make_mse_loss
 }
 
 

@@ -1,0 +1,65 @@
+# ---------- Metadata ----------
+project_name: MeanPointNet
+run_name: pointNet1
+seed: 234
+logging:
+# ---------- Model ----------
+model:
+  type: PointNet
+  #specify hyperparams here. 
+  in_channels: 0
+# ---------- Training ----------
+training:
+  epochs: 20 
+  lr: .0001
+  grad_clip: 1.0
+  save_checkpoints: false
+
+# ---------- Loss Weights ----------
+loss:
+  type: mse
+  jacobian_penalty: 0.0       # optionally used during training
+
+# ---------- Optimizer / Scheduler ----------
+optimizer:
+  type: Adam
+  parameters: 
+scheduler:
+  enabled: False
+  step_size: 20
+  gamma: 0.5
+  log: True
+# -------- Hyperparameter Scheduler------------
+scheduler_hyp: 
+# ---------- Data ----------
+data:
+  task: regression
+  dataset: pointManifold
+  path: data/pointManifold #This should be data then the method itself saves in ball rotating. 
+  val_split: 0.3
+  batch_size: 40
+  shuffle: true
+  num_workers: 8
+  augment: false
+  transforms: # make sure the transforms match transformRegistry in transformations.py. 
+    #list input keys (should correspond to the dataset input keys). 
+    "inputs": [ "ToTensor"]
+    "outputs": ["ToTensor"] # no normalize means it doesn't end up doing any normalization. This allows for NON images input as well.  
+# ---------- Diagnostics ----------
+hooks: 
+  #- name: checkpoints
+   # trigger: epoch
+   # every: 10
+  - name: grad_norm
+  - name: weight_norm
+
+
+
+  
+
+# ---------- Logging ----------
+logging:
+  use_wandb: true
+  offline_mode: false
+  save_artifacts: true
+  verbose: true

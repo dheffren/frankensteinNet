@@ -27,9 +27,9 @@ import torch.nn.functional as F
 # -----------------------------------------------------------------------------
 
 
-def mse_loss(x: torch.Tensor, x_hat: torch.Tensor) -> torch.Tensor:
-    #deal with shape mismatches here? TODO: Check to make sure this is doing the right thing. 
+def mse_loss(x: torch.Tensor, x_hat: torch.Tensor) -> torch.Tensor: 
     """Mean‑squared error with mean reduction."""
+    assert(x.shape == x_hat.shape)
     return F.mse_loss(x_hat, x, reduction="mean")
 def relative_mse_loss(x: torch.Tensor, x_hat: torch.Tensor, eps = 1e-8) -> torch.Tensor:
     x = x.view(x.shape[0], -1)

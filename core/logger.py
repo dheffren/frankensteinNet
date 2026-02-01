@@ -41,8 +41,9 @@ class ArtifactContext:
     split: str | None = None     # "train" | "val" | "ood/..." or None
 
 
-
+#TODO: Erase this. 
 def atomic_write_bytes(path: str, data: bytes):
+    # I HATE THIS. 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=".tmp_", dir=os.path.dirname(path))
     with os.fdopen(fd, "wb") as f:

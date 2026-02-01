@@ -6,7 +6,7 @@ base_config: configs/meanPoint.yaml
 
 # 2)  One human label for the whole sweep.
 #     This becomes the parent folder inside  runs/sweeps/<run_name>/<stamp>/
-run_name: meanPointFirstSweep
+run_name: testingMeanPointModel
 
 # 3)  Hyper‑parameter search space  (dot‑notation = nested key)
 method: grid          # grid | random

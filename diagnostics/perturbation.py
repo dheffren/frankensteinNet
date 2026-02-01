@@ -156,7 +156,6 @@ def weight_perturb(ctx: StepCtx, S: Services):
     num_latents = diag_cfg.get("num_latents", 20)
     seed = diag_cfg.get("fixed_batch_seed", 32)
     model.eval()
-    eps = .01    
     outputDict = {
     }
     #maybe make perturbed directions singular components or something. 
@@ -198,7 +197,7 @@ def weight_perturb(ctx: StepCtx, S: Services):
        
             #TODO: Check equality or original and reconstruction. 
     #heatmap = compute_loss_surface_heatmap(model, batch, directions[])
-    
+    print("perturb")
     return {"metrics":outputDict, "artifacts": artifactList}
 
 def latent_analysis(out, out_base, layer_name, epsilon, dir, tau = 1e-12,):

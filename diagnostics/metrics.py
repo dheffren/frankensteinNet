@@ -96,10 +96,14 @@ def CKA(X, Y):
 
     CKA = frobenius inner product normalized by its values. It's literally cosine similarity between two normalized versions of the matrices. 
     """
+    for i in range(len(X.shape)):
+        assert(X.shape[i] == Y.shape[i])
+    
     n = X.shape[0]
-    assert(Y.shape[0] == n)
-    Kx = X@ X.T
-    Ky = Y@ Y.T
+    flatX = X.view(n, -1)
+    flatY = Y.view(n, -1)
+    Kx = flatX @ flatX.T
+    Ky = flatY @ flatY.T
     ones = torch.ones((n,1), device = X.device)
     H = torch.eye(n, device = X.device) - 1/n * ones@ones.T #i've used this one before? 
     Kxh = H@Kx@H

@@ -224,7 +224,7 @@ class Trainer:
         self._fire(Trigger.EVAL_BEGIN, ctx_eval_begin)
         t_total = 0
         step_count = 0
-        #if in case we need to compute some kind of gradient. 
+        #if in case we need to compute some kind of gradient. I don't love this though. 
         if use_gradients: 
             context = contextlib.nullcontext()
         else:

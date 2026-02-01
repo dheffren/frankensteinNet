@@ -8,8 +8,9 @@ from utils.hookHelpers import *
 #TODO: Automatic field naming isn't working here - using dynamic. It works for now, but not intended. I think maybe ALL field naming being dynamic would be better. 
 @register_diagnostic(name = "jacobian_norm_diag", default_trigger = Trigger.EPOCH_END, default_every=5, priority = 0)
 def jacobian_norm_diag(ctx: StepCtx, S: Services):
-    #TODO: Fix this so the things it's "calling" are in this file insetad of in that suffix file. 
     """
+    1. Get a fixed batch
+    2. 
     Note: 
     want this method for each key and suffix - (keys might be the latent spaces of any of them). But that means they may have different
     Inputs for each. 

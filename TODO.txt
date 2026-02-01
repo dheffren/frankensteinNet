@@ -1,0 +1,22 @@
+TODO:
+Change the uv script in top to something you can automatically install to make it easier to run. 
+Make sure pieces working as intended. 
+Add tests to different pieces - not sure what specifically. (assert statements and unit tests to test if the project works). 
+
+
+Make sure i know what kinds of customization i both can do and will do. 
+
+
+Manual Evaluation of things: 
+URGENT - Artifacts/checkpoints - not working. 
+URGENT - How can i fit my experiments into this framework? What needs to change? 
+diagnostic - batch gradient ;norm/ gradient or the what? loss difference? 
+
+
+hmmmmm have infinite dimensional and finite dimensional datasets. Can put both as the "dataset", there's some flexibility there. 
+Is there ANY way to train two at once? - yes, you could just attach both of them into one "model" then smash the labels together, thus they have unrelated gradients.
+Coupling the data is the solution. 
+To compute the gradient bias at a given point, i can use a diagnostic. 
+I also need metrics for loss landscape features. 
+And i need to make sure the randomness lines up. 
+How do i still do diagnostic config? 

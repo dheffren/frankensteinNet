@@ -52,8 +52,14 @@ hooks:
    # every: 10
   - name: grad_norm
   - name: weight_norm
+  - name: hessian
+  - name: weight_perturb
+  - name: latent_norms
+  - name: global_pca
+  
 
-
+diagnostics_config:
+  layer_pca_layers: ["mean" ]
 
   
 

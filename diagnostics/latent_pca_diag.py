@@ -55,6 +55,7 @@ S
     for layer in layers: 
        
         latents, labels = compute_latent_all(model, val_loader, layer, max_batches)
+        assert(len(latents.shape) == 2) # added this because errors when running on mroe complicated layers. 
         #UPDATES METADATA. 
         _, output_dict, artifactList = run_pca_analysis(latents, labels, layer,  n_components,external_pca_basis =  None,relative_basis =  None,  do_plot = do_plot, meta = meta)
         artifacts = artifacts + artifactList
@@ -84,6 +85,7 @@ def global_pca(ctx: StepCtx, S: Services):
         #TODO: fix this later - will need to do something more reproducible. 
         mean, components = meta.get(f"{layer}/mean", None), meta.get(f"{layer}/components", None)
         latent, labels = compute_latent_batch(model, val_loader, layer, seed, num_latents)
+        assert(len(latent.shape) == 2) # added this because errors when running on mroe complicated layers. 
         _, output_dict, artifactList= run_pca_analysis(latent, labels, f"{layer}", n_components, external_pca_basis = (components, mean), relative_basis = None,  do_plot = do_plot,  meta = meta)
         artifacts = artifacts + artifactList
         outputDict.update(output_dict)

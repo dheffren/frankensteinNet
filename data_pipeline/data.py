@@ -14,7 +14,7 @@ TODO: Get this method to work with loaded data, make sure it works period. See w
 def get_dataloaders(config, train = True):
     cfgD = config["data"]
     prepare_dataset(cfgD) #prepares the mean and std for normalization.  
-    path = cfgD["path"]
+    path = cfgD["path"] #custom data path. 
     
     stats = load_normalization_stats(path) # Dictionary with mean, std. 
     

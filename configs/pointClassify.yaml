@@ -3,6 +3,8 @@ project_name: PointClassify
 run_name: pointClassify1
 seed: 234
 logging:
+run_dir: "runs"
+wandb_dir:""
 # ---------- Model ----------
 model:
   type: PointNet
@@ -37,7 +39,7 @@ data:
   params: 
     n: 10
     max: 10000
-  #be careful here!
+ 
   path: data/pointClassify
   val_split: 0.3
   batch_size: 40

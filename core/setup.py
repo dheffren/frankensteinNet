@@ -35,7 +35,7 @@ def setup_experiment(config) -> ExperimentBundle:
     hook_mgr = HookManager()
     register_hooks_from_config(hook_mgr, config)
     #TODO: Deal with resume 
-    run_manager = RunManager(config, "runs", False)
+    run_manager = RunManager(config, config["run_dir"], False) #custom run directory from config. 
     #don't love this reference here. 
     #TODO: Pass the metadata into logger, and deal with hyperparameter schedule in logger
     logger = Logger(run_manager.run_dir, config, meta)

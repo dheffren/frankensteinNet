@@ -98,9 +98,10 @@ class Logger:
         
         if self.use_wandb:
             set_wandb_api_key_from_file()
+            #TODO: Not sure if i should make wandb_dir have a default of the working directory? 
             wandb.init(project=self.project,
                        name=self.run_name,
-                       config=config, settings =wandb.Settings( _disable_stats=True, _disable_meta=True))
+                       config=config,dir = config["wandb_dir"], settings =wandb.Settings( _disable_stats=True, _disable_meta=True))
             self._original_log = wandb.log
             #wandb.log = self.debug_log
     def format_artifact_path(self, ctx: ACtx, key: str) -> str:

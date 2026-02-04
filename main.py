@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument("--resume", type=bool, default = False)
     #TODO: add other command line argument parameters here! 
     parser.add_argument("--epochs", type=int, default = None)
+    parser.add_argument("--run_loc", type=str, default = None )
     return parser.parse_args()
 
 args = parse_args()
@@ -61,7 +62,8 @@ elif "run_name" not in config or config["run_name"] is None:
 #TODO: Check other params here. 
 if args.epochs is not None:
     config["training"]["epochs"] = args.epochs
-
+if args.run_loc is not None:
+    config["training"]["checkpoint"] = args.run_loc
 #Sets the seed for everything to follow. 
 set_seed(config["seed"])
 # Build components
@@ -70,10 +72,14 @@ config["device"] = str(device)
 
 #Note: training data affects config. 
 bundle = setup_experiment(config)
+if args.run_loc is not None: 
+    checkpoint = torch.load(args.run_loc, weights_only = True)
+    bundle.model.load_state_dict(checkpoint)
 # Train
 trainer = Trainer(bundle.model, bundle.optimizer, bundle.scheduler, bundle.dataloaders, bundle.logger, bundle.hook_manager, bundle.metadata, config)
 trainer.train()
 #TODO: Get better post run setup. 
+#TODO: Set up doing things other than training as well. 
 #bundle.hook_manager.call( trigger = "post_run", trigger_point = 1, run_dir = bundle.run_manager.run_dir
                                    #)
 

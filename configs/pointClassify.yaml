@@ -4,7 +4,7 @@ run_name: pointClassify1
 seed: 234
 logging:
 run_dir: "runs"
-wandb_dir:""
+wandb_dir: "" # empty string sends things to the tmp folder. 
 # ---------- Model ----------
 model:
   type: PointNet

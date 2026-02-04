@@ -19,14 +19,14 @@ class MyModelNet(Dataset):
     Does my code have a way of dealing with multiple validation datasets/evaluation loops? 
     """
     def __init__(self, root, n ,  max, train=True, transform=None, download=True):
-        
+        #n doesn't do anything right now. 
         pointCloud = SamplePoints(num = max)
     
         self.modelNet = ModelNet(root, train=True, transform = pointCloud)
         self.dataAmt = len(self.modelNet)
         #sample point clouds immediately from this. Need to model randomness? 
         self.index = self.materialize_to_shards(self.modelNet, root + "/processed")
-        self.numPoints = numPoints
+        self.numPoints = max
 
         super().__init__()
         

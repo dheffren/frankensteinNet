@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
+from utils.hookHelpers import Services, StepCtx, Services, ACtx, Trigger # TODO: THIS IS SLOPPY  
 import inspect
 import yaml
 import sys
@@ -31,17 +32,7 @@ def _flatten(d: Dict[str, Any], prefix: str = "") -> Dict[str, float]:
         else:
             out[k2] = float(v)
     return out
-@dataclass(frozen=True)
-class ArtifactContext:
-    run_id: str
-    epoch: int
-    step: int
-    trigger: str      # "after_backward", "epoch_end", ...
-    hook: str         # "weight_perturb", "hessian", ...
-    split: str | None = None     # "train" | "val" | "ood/..." or None
 
-
-#TODO: Erase this. 
 def atomic_write_bytes(path: str, data: bytes):
     # I HATE THIS. 
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -83,7 +74,7 @@ class Logger:
         use_wandb = config.get("logging", {}).get("use_wandb")
         self.use_wandb = use_wandb and WANDB_AVAILABLE
         self.save_artifacts = config.get("logging", {}).get("save_artifacts", False)
-        self.save_checkpoints = config.get("training", {}).get("save_checkpoints", False)
+        
         #initial run name
         self.run_dir = run_dir
         #update run dir as we go. Automatically deals with repeat names. 
@@ -112,13 +103,16 @@ class Logger:
                        config=config, settings =wandb.Settings( _disable_stats=True, _disable_meta=True))
             self._original_log = wandb.log
             #wandb.log = self.debug_log
-    def format_artifact_path(self, ctx: ArtifactContext, key: str) -> str:
+    def format_artifact_path(self, ctx: ACtx, key: str) -> str:
         epst = f"ep{ctx.epoch:04d}-st{ctx.step:09d}"
         split = (ctx.split + "/") if ctx.split else ""
         base, ext = (key.rsplit(".", 1) + [""])[:2]
         ext = f".{ext}" if ext else ""
         return (
                 f"{ctx.trigger}/{ctx.hook}/{split}{base}/{epst}{ext}")
+    
+
+
     def _prefix_from_ctx(self, ctx) -> str:
         # Options: "phase/trigger/hook", "phase/hook", "hook", etc.
         parts = []
@@ -151,7 +145,9 @@ class Logger:
         if finalize: 
             self._flush_step(ctx.step)
         return 
-    def save_plot(self, actx: ArtifactContext, key: str, fig, *, log_key: str | None = None):
+    
+
+    def save_plot(self, actx: ACtx, key: str, fig, *, log_key: str | None = None):
         # 1> write png to disk automatically. 
         print("Saving plot")
         plot_path = self.run_dir / "plots"
@@ -170,7 +166,7 @@ class Logger:
             # wandb.Image is fine for PNGs; log_key controls the chart panel name
             items.append((path, "image", log_key or f"artifact/{actx.hook}/{key}"))
         plt.close(fig)
-    def save_artifact(self, actx: ArtifactContext, key: str, data: bytes, *, log_key: str | None = None):
+    def save_artifact(self, actx: ACtx, key: str, data: bytes, *, log_key: str | None = None):
         #FOR NOW: Assuming bytes is a numpy array
         #TODO: Fix this. 
         artifact_path = self.run_dir/"artifacts"
@@ -199,12 +195,12 @@ class Logger:
 
     def _flush_step(self, step:int):
         #called from flush. 
-        print(f"FLUSHING STEP: {step}")
+        #print(f"FLUSHING STEP: {step}")
         flat = self._buffer_by_step.pop(step, None)
         meta = self._meta_by_step.pop(step, {})
         arts = self._artifact_buf.pop(step, [])
         row = {"step":step, **meta, **(flat or {})}
-        print("Row: ", row)
+       # print("Row: ", row)
         self._append_csv_row(row)
         if self.use_wandb:
             for path, kind, log_key in arts:
@@ -252,8 +248,6 @@ class Logger:
         return self._original_log(*args, **kwargs)     
     
     def save_checkpoint(self, model, key):
-        if not self.save_checkpoints:
-            return
         check_path = self.run_dir / "checkpoints"
         check_path.mkdir(parents=True, exist_ok = True)
         

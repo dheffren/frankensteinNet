@@ -41,4 +41,6 @@ class Services:
     run_eval: Callable[[str | None], dict]    # e.g., evaluate current model on named split
     checkpoint: Callable[[str], str]          # save a tagged checkpoint
     device: str                               # "cuda" or "cpu"
-
+@dataclass(frozen = True)
+class ACtx:  # minimal ArtifactContext shape
+    run_id: str; epoch: int; step: int; trigger: str; hook: str; split: str|None=None

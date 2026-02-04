@@ -1,36 +1,15 @@
 from .registry import register_diagnostic
 import torch
 from utils.hookHelpers import Trigger, StepCtx, Services
-#TODO: Make it so can use same method for epoch and step? OR waste of time? Would need to rework hooks as well. 
-"""
-@register_diagnostic("epoch",default_trigger = "epoch", default_every = 1)
-def log_epoch(name, trigger, step,  logger, epoch,  **kwargs):
-       # print("logging ep")
-        logger.log_scalar(f"{name}", epoch, step=step)
-@register_diagnostic("train_metrics", default_trigger = "epoch", default_every = 1)
-def log_train_metrics(name, trigger, step, logger,  train_metrics,  **kwargs):
-  
-    for namee, dict in train_metrics.items():
-        for k,v in dict.items():
-            if torch.is_tensor(v):
-                    v = v.item()
-            logger.log_scalar(f"{name}/{trigger}/{namee}/{k}", v, step)
-@register_diagnostic("val_metrics", default_trigger = "epoch", default_every = 1)
-def log_val_metrics_epoch(name, trigger, step, logger, val_metrics, **kwargs):
-    for namee, dict in val_metrics.items():
-        for k, v in dict.items():
-            if torch.is_tensor(v):
-                    v = v.item()
-            #print(f"val/{name}/{k}")
-            logger.log_scalar(f"{name}/{trigger}/{namee}/{k}", v, step)
-@register_diagnostic("checkpoints", default_trigger = "epoch", default_every = 10)
-def save_checkpoints(name, trigger, step, model,   logger, epoch, **kwargs):
-    #print("saving check")
-    logger.save_checkpoint(model, epoch) #this epoch isn't a problem.
-@register_diagnostic("learning_rate", default_trigger = "epoch", default_every = 1)
-def log_learning_rate(name, trigger, step, logger, lr,**kwargs):
-    logger.log_scalar("lr", lr, step)
-"""
+@register_diagnostic("checkpoints", Trigger.EPOCH_END, default_every = 10, priority = 1)
+def save_checkpoint(ctx:StepCtx, services: Services):
+    #incredibly scuffed way of doing this. 
+    #TODO: See if context stuff is right. 
+    services.checkpoint()
+@register_diagnostic("learning_rate", Trigger.EPOCH_END, default_every = 1, priority = 1)
+def log_learning_rate(ctx: StepCtx, services: Services):
+    return {"metrics": {"lr": ctx.lr}}
+
 
 
 @register_diagnostic("grad_norm", Trigger. BEFORE_OPT_STEP, default_every =1, priority = 1)

@@ -4,9 +4,8 @@ import contextlib
 from  diagnostics.registry import get_diagnostics
 import time
 from dataclasses import dataclass
-from core.hookManager import HookManager, Trigger, StepCtx, Services
 from collections import defaultdict
-from utils.hookHelpers import Services
+from utils.hookHelpers import Services, StepCtx, Services, ACtx, Trigger
 class AvgMeter:
     def __init__(self): self.s=0.0; self.n=0
     def update(self,x,n=1): self.s+=float(x); self.n+=n
@@ -29,9 +28,7 @@ class MeterRegistry:
         return self._m[key]
     def reset(self, key): 
         if key in self._m: self._m[key].reset()
-@dataclass(frozen=True)
-class ACtx:  # minimal ArtifactContext shape
-    run_id: str; epoch: int; step: int; trigger: str; hook: str; split: str|None=None
+
 def recreate_model(model, path, device):
     ckpt = torch.load(path, map_location = device)
     model.load_state_dict(ckpt["model_state"])
@@ -72,18 +69,14 @@ class Trainer:
         self.meters = MeterRegistry()
         return 
 
-    def _checkpoint(self, tag: str) -> str:
-        #TODO: Fix this. 
-        import io, os
-        buf = io.BytesIO()
-        torch.save(self.model.state_dict(), buf)
-        from dataclasses import dataclass
+    def _checkpoint(self) -> str:
+        
         run_id = self.meta.get("run_id","run")
         #TODO: Hopefully the metaid has some information about the model details. 
         actx = ACtx(run_id=self.meta.get("run_id","run"), epoch=self.epoch, step=self.global_step,
                     trigger="checkpoint", hook="trainer", split=None)
         name = f"{self.epoch}_{self.global_step}_{run_id}"
-        self.logger.save_bytes(actx, name, buf.getvalue())
+        self.logger.save_checkpoint(self.model, name)
         return name
     
     def _run_eval(self, split="val") -> dict:
@@ -116,7 +109,7 @@ class Trainer:
         for name, out in self.hook_manager.call(trig, ctx, self.services) or []:
             if not out: continue
             if "metrics" in out and out["metrics"]:
-                print("out metrics: ", out["metrics"])
+                #print("out metrics: ", out["metrics"])
                 self.logger.log_dict(ctx, out["metrics"], finalize=False)
                 # accumulate for epoch means on train steps only
                 if ctx.phase=="train" and ctx.batch_idx>=0:

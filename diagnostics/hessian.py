@@ -63,3 +63,4 @@ def Hv_op_factory(model, batch, epoch):
     def Hv_op(v):
         return hvp(model, batch, v, epoch, create_graph = False)
     return Hv_op
+

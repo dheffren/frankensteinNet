@@ -7,13 +7,12 @@ logging:
 model:
   type: PointNet
   #specify hyperparams here. 
-  in_channels: 0
+  
 # ---------- Training ----------
 training:
-  epochs: 20 
+  epochs: 11
   lr: .0001
   grad_clip: 1.0
-  save_checkpoints: false
 
 # ---------- Loss Weights ----------
 loss:
@@ -49,9 +48,9 @@ data:
     "outputs": ["ToTensor"] # no normalize means it doesn't end up doing any normalization. This allows for NON images input as well.  
 # ---------- Diagnostics ----------
 hooks: 
-  #- name: checkpoints
-   # trigger: epoch
-   # every: 10
+  - name: checkpoints
+    trigger: EPOCH_END
+    every: 10
   - name: grad_norm
   - name: weight_norm
   - name: hessian

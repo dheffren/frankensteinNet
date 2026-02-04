@@ -172,8 +172,7 @@ def make_mse_loss(**extra):
     def _loss_fn(out, targets):
         output = out["output"]
         target = targets["target"]
-        print("output shape: ", output.shape)
-        print("target shape: ", target.shape)
+       
         lossVal = mse_loss(output, target)
         return {"loss": lossVal}
     return _loss_fn

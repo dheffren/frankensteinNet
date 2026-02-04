@@ -7,7 +7,7 @@ logging:
 model:
   type: PointNet
   #specify hyperparams here. 
-  
+  in_channels: 0
 # ---------- Training ----------
 training:
   epochs: 11
@@ -34,7 +34,9 @@ scheduler_hyp:
 data:
   task: regression
   dataset: ModelNet
-
+  params: 
+    n: 10
+    max: 10000
   #be careful here!
   path: data/pointClassify
   val_split: 0.3

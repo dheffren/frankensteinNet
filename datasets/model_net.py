@@ -11,15 +11,16 @@ import os
 @register_dataset("ModelNet")
 class MyModelNet(Dataset):
     """
-    The way SamplePoints works is each time you call the getitem method you're going to apply the transform BEFORE accessing the data - we don't want this, as 
-    we want to have a fixed point cloud during training. 
+    Two methods of dealing with the infinite vs finite dimensional thing. 
+    1. Sample max number of points, then sample the finite points from that (deterministically). 
+    2. Just do one sample, and rely on seeding/randomness throughout to replicate what we need. 
 
-    Question: Does pre transform run again each tim you call it? WHat i want is I want the modelNet to be saved on my hard drive as the meshses, then the point clouds before the 
-    training run. 
+    If i want to do checkpoints where I estimate the bias at DIFFERENT n, then I would need to make a NEW dataset. 
+    Does my code have a way of dealing with multiple validation datasets/evaluation loops? 
     """
-    def __init__(self, root, train=True, transform=None, download=True, numPoints = 10000):
+    def __init__(self, root, n ,  max, train=True, transform=None, download=True):
         
-        pointCloud = SamplePoints(num = numPoints)
+        pointCloud = SamplePoints(num = max)
     
         self.modelNet = ModelNet(root, train=True, transform = pointCloud)
         self.dataAmt = len(self.modelNet)

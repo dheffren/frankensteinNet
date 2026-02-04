@@ -82,12 +82,13 @@ def validate_normalization_stats(stats:dict, cfgD:dict):
 
 def get_dataset(cfgD, train = True, transform = None): 
     dataset_name = cfgD["dataset"]
+    additionalParams = cfgD["params"]
     path = cfgD["path"]
     from datasets.data_registry import get_registered_dataset
     DatasetClass = get_registered_dataset(dataset_name)
     #should I specify a path to download FROM vs root? 
     #TODO: Check class takes in right transformation object. And that it performs transformation right. 
-    return DatasetClass(root = path, train = train, transform = transform)
+    return DatasetClass(root = path, train = train, transform = transform, **additionalParams)
 
 
 def load_normalization_stats(dataset_root):

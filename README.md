@@ -2,6 +2,10 @@
 ## 1. Problem Statement, Goals. 
 Solves the problem of having to spend so much time rewriting code, adding sloppy extensions, not having proper metrics or determinism behavior, to focus on experimentation. 
 
+
+Also want to be able to analyze/evaluate pretrained models as well. 
+
+
 ### Goals: 
 Minimize friction allowing modularity and customizability. 
 Metric tracking. 

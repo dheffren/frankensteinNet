@@ -43,12 +43,12 @@ def setup_experiment(config) -> ExperimentBundle:
 
 def build_model(config, metadata):
     #load the loss function from the config.loss function. 
-    #TODO: DO i want to return the loss function and hyp scheduler? - No can access through model. 
+    
     model_cfg = config["model"]
 
     loss_fn = make_loss_fn(config["loss"])
     hyp_scheduler = build_hyp_scheduler(config)
-    #TODO: What to do if don't input these things. 
+
     from models.registry import get_registered_model
     modelType = get_registered_model(model_cfg["type"])
     

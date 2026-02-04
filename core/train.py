@@ -32,6 +32,10 @@ class MeterRegistry:
 @dataclass(frozen=True)
 class ACtx:  # minimal ArtifactContext shape
     run_id: str; epoch: int; step: int; trigger: str; hook: str; split: str|None=None
+def recreate_model(model, path, device):
+    ckpt = torch.load(path, map_location = device)
+    model.load_state_dict(ckpt["model_state"])
+    optimizer
 class Trainer:
     """
     Trainer Class - orchestrate training
@@ -67,18 +71,20 @@ class Trainer:
         
         self.meters = MeterRegistry()
         return 
+
     def _checkpoint(self, tag: str) -> str:
         #TODO: Fix this. 
         import io, os
         buf = io.BytesIO()
         torch.save(self.model.state_dict(), buf)
         from dataclasses import dataclass
-        
+        run_id = self.meta.get("run_id","run")
+        #TODO: Hopefully the metaid has some information about the model details. 
         actx = ACtx(run_id=self.meta.get("run_id","run"), epoch=self.epoch, step=self.global_step,
                     trigger="checkpoint", hook="trainer", split=None)
-        key = f"checkpoint/{tag}.pth"
-        self.logger.save_bytes(actx, key, buf.getvalue())
-        return key
+        name = f"{self.epoch}_{self.global_step}_{run_id}"
+        self.logger.save_bytes(actx, name, buf.getvalue())
+        return name
     
     def _run_eval(self, split="val") -> dict:
             return self.evaluate(self.epoch, phase=split)

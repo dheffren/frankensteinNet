@@ -250,14 +250,14 @@ class Logger:
         print(f"  Called from: {stack[1].filename}:{stack[1].lineno}")
 
         return self._original_log(*args, **kwargs)     
-    """
-    def save_checkpoint(self, model, epoch):
+    
+    def save_checkpoint(self, model, key):
         if not self.save_checkpoints:
             return
         check_path = self.run_dir / "checkpoints"
         check_path.mkdir(parents=True, exist_ok = True)
         
-        path = check_path/f"model_epoch_{epoch}.pt"
+        path = check_path/f"model_{key}.pth"
         torch.save(model.state_dict(), path)
       
         if self.use_wandb:
@@ -265,8 +265,8 @@ class Logger:
 
             artifact = wandb.Artifact(name = "model", type = "checkpoint")
             artifact.add_file(path)
-            wandb.log_artifact(artifact, aliases = [f"epoch_{epoch}"])
-    """
+            wandb.log_artifact(artifact, aliases = [f"model_{key}.pt"])
+    
     def close(self):
         self.csv_file.close()
         if self.use_wandb:

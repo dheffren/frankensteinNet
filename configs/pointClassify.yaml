@@ -37,7 +37,7 @@ data:
   dataset: ModelNet
 
   #be careful here!
-  path: /data/dheffre1/data/pointClassify #This should be data then the method itself saves in ball rotating. 
+  path: data/pointClassify
   val_split: 0.3
   batch_size: 40
   shuffle: true
